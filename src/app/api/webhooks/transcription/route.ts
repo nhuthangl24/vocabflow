@@ -132,7 +132,7 @@ async function processJob(jobId: string) {
             asset.source_url,
             '--output', tmpFilePath,
             '--format', 'bestaudio[ext=m4a]/bestaudio/best',
-            '--no-warnings', '--no-call-home'
+            '--no-warnings'
           ];
           
           execFile('yt-dlp', args, (error: any, stdout: any, stderr: any) => {

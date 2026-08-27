@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2, ExternalLink } from "lucide-react";
+import { Trash2, ExternalLink, ArrowLeft, Play, Video } from "lucide-react";
 import { deleteMediaAssetAdmin } from "./actions";
 
 type MediaAsset = {
@@ -15,15 +15,23 @@ type MediaAsset = {
   transcript_jobs: any[];
 };
 
+const getYoutubeId = (url: string) => {
+  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/);
+  return match ? match[1] : null;
+};
+
 export default function AdminMediaClient({ initialMedia, userMap }: { initialMedia: MediaAsset[], userMap: Record<string, string> }) {
   const [media, setMedia] = useState<MediaAsset[]>(initialMedia);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
-  const [selectedUserId, setSelectedUserId] = useState<string>("all");
+  
+  const [viewMode, setViewMode] = useState<"users" | "media">("users");
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
-  const filteredMedia = selectedUserId === "all" ? media : media.filter(m => m.user_id === selectedUserId);
   const uniqueUsers = Array.from(new Set(media.map(m => m.user_id)));
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!confirm("Are you sure you want to completely delete this media asset and all associated jobs/data?")) {
       return;
     }
@@ -34,127 +42,151 @@ export default function AdminMediaClient({ initialMedia, userMap }: { initialMed
       if (res.success) {
         setMedia(prev => prev.filter(m => m.id !== id));
       } else {
-        alert("Failed to delete: " + res.error);
+        alert("Delete failed: " + res.error);
       }
-    } catch (e: any) {
-      alert("Error: " + e.message);
+    } catch (err) {
+      alert("Error deleting media");
     } finally {
       setIsDeleting(null);
     }
   };
 
+  const handleUserClick = (uid: string) => {
+    setSelectedUserId(uid);
+    setViewMode("media");
+  };
+
+  const handleBack = () => {
+    setViewMode("users");
+    setSelectedUserId(null);
+  };
+
+  if (viewMode === "users") {
+    return (
+      <div className="flex flex-col h-full gap-6 relative">
+        <div className="absolute top-1/4 right-1/4 w-1/2 h-1/2 bg-purple-500/10 blur-[120px] rounded-full pointer-events-none -z-10" />
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-4">
+          {uniqueUsers.map(uid => {
+            const userMedia = media.filter(m => m.user_id === uid);
+            const email = userMap[uid] || uid;
+            return (
+              <div 
+                key={uid} 
+                onClick={() => handleUserClick(uid)} 
+                className="cursor-pointer bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-3xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 hover:border-indigo-300 dark:hover:border-indigo-700/50 flex flex-col items-center text-center gap-4 group"
+              >
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/40 dark:to-purple-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-3xl font-black shadow-inner group-hover:scale-110 transition-transform duration-300">
+                  {email.charAt(0).toUpperCase()}
+                </div>
+                <div className="w-full">
+                  <h3 className="font-bold text-slate-900 dark:text-white truncate w-full text-base mb-1" title={email}>{email}</h3>
+                  <div className="flex items-center justify-center gap-1.5 text-sm font-medium text-slate-500 dark:text-neutral-400 bg-slate-50 dark:bg-neutral-800/50 w-fit mx-auto px-3 py-1 rounded-full">
+                    <Video className="w-3.5 h-3.5" />
+                    <span>{userMedia.length} Videos</span>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        {uniqueUsers.length === 0 && (
+          <div className="text-center py-20 text-slate-500 font-medium">Chưa có người dùng nào tải video lên.</div>
+        )}
+      </div>
+    );
+  }
+
+  // Media View
+  const userMedia = media.filter(m => m.user_id === selectedUserId);
+  const email = selectedUserId ? (userMap[selectedUserId] || selectedUserId) : "";
+
   return (
     <div className="flex flex-col h-full gap-4 relative">
-      {/* Ambient background glow */}
-      <div className="absolute top-1/4 right-1/4 w-1/2 h-1/2 bg-purple-500/10 blur-[120px] rounded-full pointer-events-none -z-10" />
-
-      {/* User Tabs */}
-      <div className="flex gap-2 overflow-x-auto p-1 mb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        <button 
-          onClick={() => setSelectedUserId("all")} 
-          className={`px-5 py-2 text-sm font-bold whitespace-nowrap rounded-full transition-all duration-300 ${selectedUserId === "all" ? "bg-white text-indigo-600 shadow-md dark:bg-white/10 dark:text-white dark:shadow-[0_0_15px_rgba(255,255,255,0.05)] border border-transparent dark:border-white/10" : "bg-slate-50 text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:bg-transparent dark:text-neutral-400 dark:hover:text-white border border-transparent dark:hover:border-white/10"}`}
-        >
-          Tất cả người dùng
-        </button>
-        {uniqueUsers.map(uid => (
-          <button 
-            key={uid}
-            onClick={() => setSelectedUserId(uid)} 
-            className={`px-5 py-2 text-sm font-bold whitespace-nowrap rounded-full transition-all duration-300 flex items-center gap-2 ${selectedUserId === uid ? "bg-white text-indigo-600 shadow-md dark:bg-white/10 dark:text-white dark:shadow-[0_0_15px_rgba(255,255,255,0.05)] border border-transparent dark:border-white/10" : "bg-slate-50 text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:bg-transparent dark:text-neutral-400 dark:hover:text-white border border-transparent dark:hover:border-white/10"}`}
-          >
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${selectedUserId === uid ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300' : 'bg-slate-200 text-slate-600 dark:bg-white/5 dark:text-neutral-300'}`}>
-              {(userMap[uid] || "U").charAt(0).toUpperCase()}
-            </div>
-            {userMap[uid] || uid.substring(0, 8)}
-          </button>
-        ))}
-      </div>
-      <div className="flex border-b border-slate-200 dark:border-neutral-800 overflow-x-auto mb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        <button 
-          onClick={() => setSelectedUserId("all")} 
-          className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${selectedUserId === "all" ? "border-indigo-500 text-indigo-600 dark:text-indigo-400" : "border-transparent text-slate-500 hover:text-slate-700 dark:text-neutral-400 dark:hover:text-neutral-200"}`}
-        >
-          Tất cả người dùng
-        </button>
-        {uniqueUsers.map(uid => (
-          <button 
-            key={uid}
-            onClick={() => setSelectedUserId(uid)} 
-            className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex items-center gap-2 ${selectedUserId === uid ? "border-indigo-500 text-indigo-600 dark:text-indigo-400" : "border-transparent text-slate-500 hover:text-slate-700 dark:text-neutral-400 dark:hover:text-neutral-200"}`}
-          >
-            <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-neutral-800 flex items-center justify-center text-[10px] font-bold">
-              {(userMap[uid] || "U").charAt(0).toUpperCase()}
-            </div>
-            {userMap[uid] || uid.substring(0, 8)}
-          </button>
-        ))}
+      <button 
+        onClick={handleBack} 
+        className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-indigo-600 dark:text-neutral-400 dark:hover:text-indigo-400 transition-colors w-fit px-3 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-neutral-800/50"
+      >
+        <ArrowLeft className="w-4 h-4" /> Quay lại danh sách User
+      </button>
+      
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+          {email.charAt(0).toUpperCase()}
+        </div>
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+          Kho Video của <span className="text-indigo-600 dark:text-indigo-400">{email}</span>
+        </h2>
       </div>
 
-      <div className="bg-white dark:bg-neutral-900/40 dark:backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-xl dark:shadow-2xl flex-1 relative">
-      <div className="overflow-x-auto h-full">
-        <table className="w-full text-left text-sm text-slate-600 dark:text-neutral-300">
-          <thead className="bg-slate-50/80 dark:bg-white/5 text-slate-500 dark:text-neutral-400 uppercase tracking-wider text-[11px] font-bold sticky top-0 z-10 backdrop-blur-md">
-                <tr>
-                  <th className="px-6 py-4 border-b border-slate-200 dark:border-white/10">Asset ID</th>
-                  <th className="px-6 py-4 border-b border-slate-200 dark:border-white/10 min-w-[200px]">Title / Source</th>
-                  {selectedUserId === "all" && <th className="px-6 py-4 border-b border-slate-200 dark:border-white/10">User</th>}
-                  <th className="px-6 py-4 border-b border-slate-200 dark:border-white/10">Status</th>
-                  <th className="px-6 py-4 border-b border-slate-200 dark:border-white/10 text-right">Actions</th>
-                </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-            {filteredMedia.map((asset) => {
-              const jobStatus = asset.transcript_jobs?.[0]?.status || asset.status;
-              
-              return (
-                <tr key={asset.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
-                  <td className="px-6 py-4 font-mono text-xs text-slate-400 dark:text-neutral-500 group-hover:text-slate-500 dark:group-hover:text-neutral-400 transition-colors">{asset.id.substring(0, 13)}...</td>
-                  <td className="px-6 py-4">
-                    <div className="font-semibold text-slate-900 dark:text-white mb-1 line-clamp-1" title={asset.title}>
-                      {asset.title || "Untitled"}
-                    </div>
-                    <a href={asset.source_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline flex items-center gap-1 w-fit">
-                      {asset.type} <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </td>
-                  {selectedUserId === "all" && (
-                    <td className="px-6 py-4 text-xs font-medium text-slate-700 dark:text-neutral-300">
-                      {userMap[asset.user_id] || asset.user_id.substring(0, 13)}
-                    </td>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {userMedia.map((asset) => {
+          const ytId = getYoutubeId(asset.source_url);
+          const thumbnailUrl = ytId ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` : null;
+          const jobStatus = asset.transcript_jobs?.[0]?.status || asset.status;
+          
+          return (
+            <div key={asset.id} className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col group">
+              <div className="aspect-video bg-slate-100 dark:bg-neutral-800 relative overflow-hidden">
+                {thumbnailUrl ? (
+                  <img src={thumbnailUrl} alt={asset.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-slate-300">
+                    <Play className="w-12 h-12 opacity-50" />
+                  </div>
+                )}
+                
+                {/* Status Badge */}
+                <div className="absolute top-3 left-3 flex gap-2">
+                  {jobStatus === "completed" || jobStatus === "ready" ? (
+                    <span className="px-2.5 py-1 bg-emerald-500 text-white rounded-md font-bold text-[10px] uppercase tracking-wider shadow-sm">Completed</span>
+                  ) : jobStatus === "failed" ? (
+                    <span className="px-2.5 py-1 bg-rose-500 text-white rounded-md font-bold text-[10px] uppercase tracking-wider shadow-sm">Failed</span>
+                  ) : (
+                    <span className="px-2.5 py-1 bg-indigo-500 text-white rounded-md font-bold text-[10px] uppercase tracking-wider shadow-sm animate-pulse">Processing</span>
                   )}
-                  <td className="px-6 py-4">
-                    {jobStatus === "completed" || jobStatus === "ready" ? (
-                      <span className="px-3 py-1 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 border border-emerald-500/20 dark:text-emerald-400 rounded-full font-bold text-[11px] uppercase tracking-wide flex items-center w-fit">Completed</span>
-                    ) : jobStatus === "failed" ? (
-                      <span className="px-3 py-1 bg-rose-50 text-rose-600 dark:bg-rose-500/10 border border-rose-500/20 dark:text-rose-400 rounded-full font-bold text-[11px] uppercase tracking-wide flex items-center w-fit">Failed</span>
-                    ) : (
-                      <span className="px-3 py-1 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 border border-indigo-500/20 dark:text-indigo-400 rounded-full font-bold text-[11px] uppercase tracking-wide flex items-center w-fit animate-pulse">Processing</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button 
-                      onClick={() => handleDelete(asset.id)}
-                      disabled={isDeleting === asset.id}
-                      className="p-2 text-slate-400 hover:text-white hover:bg-rose-500 dark:hover:bg-rose-500/20 dark:hover:text-rose-400 rounded-xl transition-all duration-200 inline-flex disabled:opacity-50 shadow-sm hover:shadow-rose-500/25 ml-auto"
-                      title="Force Delete Asset"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              )
-            })}
-            {filteredMedia.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
-                  No media assets found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                </div>
+
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[2px]">
+                  <a 
+                    href={asset.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-10 h-10 bg-white text-slate-900 rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg"
+                    title="View Source"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                  <button 
+                    onClick={(e) => handleDelete(asset.id, e)}
+                    disabled={isDeleting === asset.id}
+                    className="w-10 h-10 bg-rose-500 text-white rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg disabled:opacity-50"
+                    title="Delete Asset"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              <div className="p-4 flex flex-col flex-1">
+                <h3 className="font-bold text-slate-900 dark:text-white line-clamp-2 leading-tight mb-2" title={asset.title}>
+                  {asset.title || "Untitled Video"}
+                </h3>
+                <div className="mt-auto pt-3 border-t border-slate-100 dark:border-neutral-800 flex items-center justify-between">
+                  <span className="text-[10px] font-medium text-slate-400 dark:text-neutral-500 uppercase tracking-wider">
+                    {new Date(asset.created_at).toLocaleDateString()}
+                  </span>
+                  <span className="text-[10px] font-mono text-slate-400 bg-slate-50 dark:bg-neutral-800 px-2 py-0.5 rounded">
+                    {asset.id.substring(0, 8)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )
+        })}
       </div>
-    </div>
+      {userMedia.length === 0 && (
+        <div className="text-center py-20 text-slate-500">Người dùng này chưa có video nào.</div>
+      )}
     </div>
   );
 }

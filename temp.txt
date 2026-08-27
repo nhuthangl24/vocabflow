@@ -1,0 +1,8 @@
+<button 
+            onClick={handleSignOut}
+            className="flex items-center gap-2.5 px-4 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 transition-colors w-full text-left mt-1 border-t border-slate-100 pt-2 dark:border-neutral-800"
+          >
+            <LogOut className="w-4 h-4" />
+            Đăng xuất
+          </button>
+  

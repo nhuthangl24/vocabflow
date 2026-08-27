@@ -309,3 +309,5 @@ export default function VocabularyClient({ items }: { items: VocabularyItem[] })
     </div>
   );
 }
+
+// force rebuild 2

@@ -60,6 +60,18 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
     if (grammarData) grammar = grammarData;
   }
 
+  // Fetch transcript segments
+  let transcript = [];
+  if (job && job.id) {
+    const { data: segments } = await supabase
+      .from("transcript_segments")
+      .select("*")
+      .eq("job_id", job.id)
+      .order("start_time_ms", { ascending: true });
+    
+    if (segments) transcript = segments;
+  }
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-6">
@@ -78,7 +90,7 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
         <VideoWorkspaceClient 
           videoUrl={videoUrl} 
           vocabulary={vocabulary} 
-          grammar={grammar} 
+          grammar={grammar}
           userId={user.id} 
           targetLanguage={job?.settings?.targetLanguage || "English"}
         />

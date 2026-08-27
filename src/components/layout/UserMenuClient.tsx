@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { LogOut, Settings, User as UserIcon } from "lucide-react";
+import { LogOut, Settings, User as UserIcon, Crown } from "lucide-react";
 import Link from "next/link";
 
 type UserMenuClientProps = {
@@ -14,6 +14,7 @@ type UserMenuClientProps = {
 export default function UserMenuClient({ user, isCollapsed }: UserMenuClientProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [localUser, setLocalUser] = useState(user);
+  const isPro = user?.user_metadata?.plan === 'pro';
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const supabase = createClient();
@@ -78,11 +79,18 @@ export default function UserMenuClient({ user, isCollapsed }: UserMenuClientProp
         onClick={() => setIsOpen(!isOpen)}
         title={isCollapsed ? "Tài khoản" : undefined}
       >
-        <div className={`${isCollapsed ? 'w-10 h-10' : 'w-8 h-8'} rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm border border-indigo-600/20 overflow-hidden`}>
-          {avatarUrl ? (
-            <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-          ) : (
-            initial
+        <div className="relative shrink-0">
+          <div className={`${isCollapsed ? 'w-10 h-10' : 'w-8 h-8'} rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-xs shadow-sm border border-indigo-600/20 overflow-hidden`}>
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              initial
+            )}
+          </div>
+          {isPro && (
+            <div className={`absolute -top-1.5 -right-1.5 bg-amber-400 text-white rounded-full flex items-center justify-center shadow-sm border-2 border-white dark:border-[#0a0a0a] z-10 ${isCollapsed ? 'w-4 h-4' : 'w-3.5 h-3.5'}`}>
+              <Crown className={`${isCollapsed ? 'w-2.5 h-2.5' : 'w-2 h-2'} fill-white`} />
+            </div>
           )}
         </div>
         {!isCollapsed && (
@@ -108,6 +116,14 @@ export default function UserMenuClient({ user, isCollapsed }: UserMenuClientProp
             <Settings className="w-4 h-4" />
             Cài đặt tài khoản
           </Link>
+            <Link 
+              href="/pricing" 
+              className="flex items-center gap-2.5 px-4 py-2 text-sm font-medium text-amber-600 hover:bg-amber-50 hover:text-amber-700 transition-colors w-full text-left dark:text-amber-500 dark:hover:bg-amber-500/10 border-t border-slate-100 pt-2 mt-1 dark:border-neutral-800"
+              onClick={() => setIsOpen(false)}
+            >
+              <Crown className="w-4 h-4" />
+              Quản lý gói cước
+            </Link>
           
           <button 
             onClick={handleSignOut}
@@ -121,3 +137,5 @@ export default function UserMenuClient({ user, isCollapsed }: UserMenuClientProp
     </div>
   );
 }
+
+// force rebuild final

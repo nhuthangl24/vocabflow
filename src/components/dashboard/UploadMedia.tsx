@@ -6,14 +6,14 @@ import { createClient } from "@/lib/supabase/client";
 import { createMediaJob } from "@/app/actions/media";
 import { Video, Link as LinkIcon, UploadCloud, X } from "lucide-react";
 
-export default function UploadMedia({ userId }: { userId: string }) {
+export default function UploadMedia({ userId, isPro = false }: { userId: string, isPro?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"upload" | "youtube">("youtube");
   
   const [file, setFile] = useState<File | null>(null);
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [targetLanguage, setTargetLanguage] = useState("English");
-  const [targetCount, setTargetCount] = useState(35);
+  const [targetCount, setTargetCount] = useState<number | "">(35);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -47,7 +47,7 @@ export default function UploadMedia({ userId }: { userId: string }) {
           type,
           storagePath: uploadData.path,
           sizeBytes: file.size,
-          settings: { targetLanguage, targetCount }
+          settings: { targetLanguage, targetCount: targetCount || 35 }
         });
 
       } else {
@@ -63,7 +63,7 @@ export default function UploadMedia({ userId }: { userId: string }) {
           storagePath: "", 
           sizeBytes: 0,
           sourceUrl: youtubeUrl,
-          settings: { targetLanguage }
+          settings: { targetLanguage, targetCount: targetCount || 35 }
         });
       }
 
@@ -181,10 +181,10 @@ export default function UploadMedia({ userId }: { userId: string }) {
                       <div className="relative">
                         <input
                           type="number"
-                          min={5}
+                          min={35}
                           max={100}
                           value={targetCount}
-                          onChange={(e) => setTargetCount(Number(e.target.value))}
+                          onChange={(e) => setTargetCount(e.target.value === "" ? "" : Number(e.target.value))}
                           placeholder="Số từ"
                           className="block w-full h-[46px] rounded-lg border border-gray-300 bg-white p-3 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:bg-neutral-900 dark:border-neutral-700 dark:text-neutral-200"
                         />

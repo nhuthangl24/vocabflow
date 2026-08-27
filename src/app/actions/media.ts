@@ -25,7 +25,9 @@ export async function createMediaJob(data: {
   const { count: todayCount } = await supabase
     .from("media_assets")
     .select("*", { count: "exact", head: true })
-    .gte("created_at", today.toISOString());
+    .gte("created_at", today.toISOString())
+    .neq("status", "failed")
+    .neq("status", "deleted");
 
   // Check if user is Pro
   const isPro = user.user_metadata?.plan === 'pro';
@@ -35,19 +37,39 @@ export async function createMediaJob(data: {
     throw new Error(`Bạn đã hết lượt xử lý AI hôm nay (${todayCount}/${dailyLimit}). ${!isPro ? 'Hãy nâng cấp Pro để học nhiều hơn!' : ''}`);
   }
 
-  // Auto-fetch YouTube title if user didn't provide one
-  if (data.type === "youtube" && data.sourceUrl && (!finalTitle || finalTitle === "YouTube Video")) {
+  // Auto-fetch YouTube title and check length if user didn't provide one
+  if (data.type === "youtube" && data.sourceUrl) {
     try {
-      const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(data.sourceUrl)}&format=json`;
-      const res = await fetch(oembedUrl, { next: { revalidate: 3600 } });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.title) {
-          finalTitle = json.title;
+      const htmlRes = await fetch(data.sourceUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        next: { revalidate: 3600 }
+      });
+      if (htmlRes.ok) {
+        const html = await htmlRes.text();
+        
+        // Check video length
+        const lengthMatch = html.match(/"lengthSeconds":"(\d+)"/);
+        if (lengthMatch) {
+          const lengthSeconds = parseInt(lengthMatch[1]);
+          if (!isPro && lengthSeconds > 25 * 60) {
+            throw new Error(`Video này dài ${Math.ceil(lengthSeconds / 60)} phút. Gói Cơ Bản (Free) chỉ hỗ trợ tối đa 25 phút/video. Hãy nâng cấp Gói PRO để trích xuất video không giới hạn!`);
+          }
+        }
+
+        // Check title if missing
+        if (!finalTitle || finalTitle === "YouTube Video") {
+          const titleMatch = html.match(/<title>(.*?) - YouTube<\/title>/) || html.match(/<title>(.*?)<\/title>/);
+          if (titleMatch && titleMatch[1]) {
+            // decode HTML entities roughly
+            finalTitle = titleMatch[1].replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+          }
         }
       }
-    } catch (e) {
-      console.error("Failed to fetch youtube title", e);
+    } catch (e: any) {
+      if (e.message.includes("Gói Cơ Bản")) {
+        throw e; // rethrow the limit error so the user sees it
+      }
+      console.error("Failed to fetch youtube metadata", e);
     }
   }
 

@@ -1,12 +1,27 @@
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegStatic from "ffmpeg-static";
+import ffprobeStatic from "ffprobe-static";
 import fs from "fs";
 import path from "path";
 import os from "os";
 
+function fixPath(p: string | null | undefined) {
+  if (!p) return p as any;
+  // Next.js Turbopack rewrites __dirname to \ROOT\
+  if (p.includes("ROOT")) {
+    const relative = p.split("ROOT")[1].replace(/^[\\\/]/, '');
+    return path.join(process.cwd(), relative);
+  }
+  return p;
+}
+
 // Set ffmpeg path
 if (ffmpegStatic) {
-  ffmpeg.setFfmpegPath(process.env.FFMPEG_PATH || ffmpegStatic);
+  const p = process.env.FFMPEG_PATH;
+  ffmpeg.setFfmpegPath(!p || p === 'ffmpeg' ? fixPath(ffmpegStatic) : p);
+}
+if (ffprobeStatic && ffprobeStatic.path) {
+  ffmpeg.setFfprobePath(fixPath(ffprobeStatic.path));
 }
 
 export async function extractAudio(inputPath: string): Promise<string> {

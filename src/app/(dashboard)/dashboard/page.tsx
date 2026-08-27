@@ -10,6 +10,7 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser();
 
   let mediaAssets = [];
+  let totalVideosCount = 0;
   let vocabCount = 0;
   let todayCount = 0;
 
@@ -28,6 +29,14 @@ export default async function DashboardPage() {
       
     if (ma) mediaAssets = ma;
 
+    // Fetch total media assets count for stats
+    const { count: mc } = await supabase
+      .from("media_assets")
+      .select("*", { count: "exact", head: true })
+      .neq("status", "deleted");
+      
+    totalVideosCount = mc || 0;
+
     // Fetch total vocabulary items for user
     const { count: vc } = await supabase
       .from("vocabulary_items")
@@ -41,13 +50,15 @@ export default async function DashboardPage() {
     const { count: tc } = await supabase
       .from("media_assets")
       .select("*", { count: "exact", head: true })
-      .gte("created_at", today.toISOString());
+      .gte("created_at", today.toISOString())
+      .neq("status", "failed")
+      .neq("status", "deleted");
     
     todayCount = tc || 0;
   }
 
   // Rough estimation of processing time/learning time (e.g. 15 mins per video)
-  const estimatedMins = (mediaAssets?.length || 0) * 15;
+  const estimatedMins = (totalVideosCount || 0) * 15;
   const learningTime = estimatedMins >= 60 ? `${(estimatedMins / 60).toFixed(1)}h` : `${estimatedMins}m`;
 
   return (
@@ -78,7 +89,7 @@ export default async function DashboardPage() {
                 <span className="text-[13px] font-bold text-slate-500 dark:text-neutral-400">Video đã xử lý</span>
               </div>
               <div className="flex items-end gap-2">
-                <span className="text-2xl font-bold text-slate-900 dark:text-white">{mediaAssets?.length || 0}</span>
+                <span className="text-2xl font-bold text-slate-900 dark:text-white">{totalVideosCount}</span>
                 <span className="text-xs font-semibold text-emerald-500 mb-1">Tổng</span>
               </div>
             </div>
@@ -110,7 +121,7 @@ export default async function DashboardPage() {
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Hoạt động gần đây</h2>
-              <button className="text-xs font-semibold text-indigo-600 dark:text-neutral-200 hover:text-indigo-700">Xem thư viện &rarr;</button>
+              <Link href="/library" className="text-xs font-semibold text-indigo-600 dark:text-neutral-200 hover:text-indigo-700">Xem thư viện &rarr;</Link>
             </div>
             <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-slate-200 dark:border-neutral-800 shadow-sm overflow-hidden dark:border-neutral-700">
               <RecentVideosClient initialAssets={mediaAssets || []} />

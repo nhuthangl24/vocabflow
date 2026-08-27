@@ -62,8 +62,8 @@ export default function AdminUsersClient({ initialUsers }: { initialUsers: User[
           <input 
             type="text" 
             placeholder="Search by email..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             className="pl-10 pr-4 py-2 w-64 bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all shadow-inner"
           />
         </div>

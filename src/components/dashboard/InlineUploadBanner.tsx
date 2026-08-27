@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { createMediaJob } from "@/app/actions/media";
-import { Video, LinkIcon, Upload, Sparkles } from "lucide-react";
+import { Video, LinkIcon, Upload, Sparkles, Clipboard } from "lucide-react";
 
 export default function InlineUploadBanner({ 
   userId, 
@@ -23,7 +23,7 @@ export default function InlineUploadBanner({
   const [activeTab, setActiveTab] = useState<'youtube' | 'upload'>('youtube');
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [targetLanguage, setTargetLanguage] = useState("English");
-  const [targetCount, setTargetCount] = useState<number>(isPro ? 5 : 35);
+  const [targetCount, setTargetCount] = useState<number | "">(35);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
 
@@ -57,7 +57,7 @@ export default function InlineUploadBanner({
           storagePath: "", 
           sizeBytes: 0,
           sourceUrl: youtubeUrl,
-          settings: { targetLanguage, targetCount }
+          settings: { targetLanguage, targetCount: targetCount || 35 }
         });
       } else {
         // Fallback for upload via hidden file input (handled by standard click)
@@ -84,7 +84,7 @@ export default function InlineUploadBanner({
           type,
           storagePath: uploadData.path,
           sizeBytes: file.size,
-          settings: { targetLanguage, targetCount }
+          settings: { targetLanguage, targetCount: targetCount || 35 }
         });
       }
 
@@ -132,57 +132,46 @@ export default function InlineUploadBanner({
             <div className="flex items-center gap-1 px-1 pt-1 pb-2">
               <button
                 type="button"
-                onClick={() => setActiveTab('youtube')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${ activeTab === 'youtube' ? 'bg-white dark:bg-neutral-900 text-indigo-600 dark:text-neutral-200 shadow-sm border border-slate-200 dark:border-neutral-700' : 'text-slate-500 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800 hover:text-slate-900 dark:hover:text-slate-100' } dark:border-neutral-700`}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors bg-white dark:bg-neutral-900 text-indigo-600 dark:text-neutral-200 shadow-sm border border-slate-200 dark:border-neutral-700"
               >
                 <LinkIcon className="w-3.5 h-3.5" />
                 YouTube Link
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('upload')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${ activeTab === 'upload' ? 'bg-white dark:bg-neutral-900 text-indigo-600 dark:text-neutral-200 shadow-sm border border-slate-200 dark:border-neutral-700' : 'text-slate-500 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800 hover:text-slate-900 dark:hover:text-slate-100' } dark:border-neutral-700`}
-              >
-                <Upload className="w-3.5 h-3.5" />
-                Tải video lên
               </button>
             </div>
 
             {/* Main Input Row */}
             <div className="flex flex-col sm:flex-row gap-2">
-              {activeTab === 'youtube' ? (
+              <div className="flex-1 relative">
                 <input
                   type="url"
                   required
                   value={youtubeUrl}
                   onChange={(e) => setYoutubeUrl(e.target.value)}
-                  placeholder="Dán link YouTube vào đây , ưu tiên các video có phụ đề ..."
-                  className="flex-1 h-11 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg px-4 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm"
+                  placeholder="Dán link YouTube vào đây..."
+                  className="w-full h-11 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg pl-4 pr-10 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm"
                 />
-              ) : (
-                <div className="flex-1 relative">
-                  <input 
-                    id="inline-file-upload" 
-                    type="file" 
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
-                    onChange={() => {
-                      const fileInput = document.getElementById('inline-file-upload') as HTMLInputElement;
-                      if (fileInput.files?.[0]) {
-                        // Just a dummy trigger
-                      }
-                    }}
-                  />
-                  <div className="h-11 bg-white dark:bg-neutral-900 border border-dashed border-slate-300 dark:border-slate-600 rounded-lg flex items-center justify-center text-sm font-medium text-slate-500 dark:text-neutral-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-indigo-600 transition-colors shadow-sm dark:border-neutral-600">
-                    Click để chọn hoặc kéo thả file
-                  </div>
-                </div>
-              )}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const text = await navigator.clipboard.readText();
+                      if (text) setYoutubeUrl(text);
+                    } catch (err) {
+                      console.error('Failed to read clipboard contents: ', err);
+                    }
+                  }}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
+                  title="Dán link"
+                >
+                  <Clipboard className="w-4 h-4" />
+                </button>
+              </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 w-full sm:w-auto">
                 <select
                   value={targetLanguage}
                   onChange={(e) => setTargetLanguage(e.target.value)}
-                  className="h-11 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg px-3 text-sm font-medium text-slate-700 dark:text-neutral-300 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm w-32 dark:text-neutral-200"
+                  className="h-11 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg px-3 text-sm font-medium text-slate-700 dark:text-neutral-300 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm flex-1 sm:w-32 sm:flex-none dark:text-neutral-200"
                 >
                   <option value="English">Tiếng Anh</option>
                   <option value="Chinese">Tiếng Trung</option>
@@ -191,20 +180,20 @@ export default function InlineUploadBanner({
                 </select>
 
                 {isPro ? (
-                  <div className="relative">
+                  <div className="relative flex-1 sm:w-32 sm:flex-none">
                     <input
                       type="number"
-                      min={5}
+                      min={35}
                       max={100}
-                      value={targetCount}
-                      onChange={(e) => setTargetCount(Number(e.target.value))}
+                      value={targetCount === "" ? "" : targetCount}
+                      onChange={(e) => setTargetCount(e.target.value === "" ? "" : Number(e.target.value))}
                       placeholder="Số từ"
                       title="Số lượng từ vựng"
-                      className="h-11 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg px-3 text-sm font-medium text-slate-700 dark:text-neutral-300 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm w-32 dark:text-neutral-200"
+                      className="h-11 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg px-3 text-sm font-medium text-slate-700 dark:text-neutral-300 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm w-full dark:text-neutral-200"
                     />
                   </div>
                 ) : (
-                  <div className="h-11 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 rounded-lg px-3 text-sm font-medium text-slate-400 dark:text-neutral-500 flex items-center shadow-sm w-32 cursor-not-allowed relative group dark:text-neutral-400 dark:bg-[#0a0a0a]">
+                  <div className="h-11 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 rounded-lg px-3 text-sm font-medium text-slate-400 dark:text-neutral-500 flex items-center justify-center sm:justify-start shadow-sm flex-1 sm:w-32 sm:flex-none cursor-not-allowed relative group dark:text-neutral-400 dark:bg-[#0a0a0a]">
                     <span>35 từ vựng</span>
                     <div className="absolute hidden group-hover:block bottom-full left-1/2 -translate-x-1/2 mb-2 w-max bg-neutral-900 text-white text-[10px] py-1 px-2 rounded">
                       Lên Pro để chọn số lượng

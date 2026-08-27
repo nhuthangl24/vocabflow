@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Library, BookOpen, LineChart, Settings } from "lucide-react";
+import { LayoutDashboard, Library, BookOpen, LineChart, Settings, Headphones } from "lucide-react";
 import { ThemeToggle } from "../ThemeToggle";
 
 type SidebarNavProps = {
@@ -18,6 +18,7 @@ export default function SidebarNav({ isCollapsed, user }: SidebarNavProps) {
     { name: "Thống kê", href: user ? "/analytics" : "/login", icon: LineChart },
     { name: "Kho Video", href: user ? "/library" : "/login", icon: Library },
     { name: "Kho Từ vựng", href: user ? "/vocabulary" : "/login", icon: BookOpen },
+    { name: "Shadowing", href: user ? "/shadowing" : "/login", icon: Headphones },
     { name: "Cài đặt", href: user ? "/settings" : "/login", icon: Settings },
   ];
 
@@ -30,7 +31,7 @@ export default function SidebarNav({ isCollapsed, user }: SidebarNavProps) {
       {navItems.map((item) => {
         // Active state based on original path if user was logged in
         const originalPath = item.href === '/login' 
-          ? (item.name === "Kho Video" ? "/library" : item.name === "Kho Từ vựng" ? "/vocabulary" : item.name === "Thống kê" ? "/analytics" : "/settings")
+          ? (item.name === "Kho Video" ? "/library" : item.name === "Kho Từ vựng" ? "/vocabulary" : item.name === "Thống kê" ? "/analytics" : item.name === "Shadowing" ? "/shadowing" : "/settings")
           : item.href;
           
         const isActive = pathname === originalPath || pathname.startsWith(originalPath + '/');
@@ -50,8 +51,10 @@ export default function SidebarNav({ isCollapsed, user }: SidebarNavProps) {
       })}
 
       <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-center dark:border-neutral-800">
-        <ThemeToggle />
+        <ThemeToggle isCollapsed={isCollapsed} />
       </div>
     </div>
   );
 }
+
+// force rebuild 2

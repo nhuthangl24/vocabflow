@@ -7,12 +7,31 @@ export default async function PricingPage() {
   const { data: { user } } = await supabase.auth.getUser();
   const isPro = user?.user_metadata?.plan === 'pro';
 
+  const { data: plans } = await supabase.from('plans').select('*').order('price_usd');
+  const freePlan = plans?.find(p => p.price_usd === 0) || {
+    name: "Gói Cơ Bản (Free)",
+    description: "Trải nghiệm tính năng trích xuất từ vựng cơ bản.",
+    price_usd: 0,
+    monthly_transcription_minutes: 25,
+    max_vocabulary_per_video: 35,
+    monthly_video_count: 2
+  };
+  
+  const proPlan = plans?.find(p => p.price_usd > 0) || {
+    name: "Gói PRO",
+    description: "Dành cho người học ngoại ngữ nghiêm túc và chuyên nghiệp.",
+    price_usd: 69000,
+    monthly_transcription_minutes: 999999,
+    max_vocabulary_per_video: 50,
+    monthly_video_count: 15
+  };
+
   return (
-    <div className="py-24 sm:py-32">
+    <div className="py-12 sm:py-16">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-4xl text-center">
           <h2 className="text-base font-semibold leading-7 text-blue-600">Bảng giá</h2>
-          <p className="mt-2 text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
+          <p className="mt-2 text-4xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-5xl">
             Nâng cấp <span className="text-blue-600">Lumina Vocabulary PRO</span>
           </p>
           <p className="mt-6 text-lg leading-8 text-gray-600 dark:text-neutral-300">
@@ -20,14 +39,14 @@ export default async function PricingPage() {
           </p>
         </div>
 
-        <div className="isolate mx-auto mt-16 grid max-w-md grid-cols-1 gap-y-8 sm:mt-20 lg:mx-0 lg:max-w-none lg:grid-cols-2 lg:gap-x-8 xl:gap-x-12">
+        <div className="isolate mx-auto mt-8 grid max-w-md grid-cols-1 gap-y-8 sm:mt-12 lg:mx-0 lg:max-w-none lg:grid-cols-2 lg:gap-x-8 xl:gap-x-12">
           
           {/* Free Tier */}
           <div className="rounded-3xl p-8 ring-1 ring-gray-200 bg-white dark:bg-[#0a0a0a] dark:ring-neutral-800">
-            <h3 className="text-lg font-semibold leading-8 text-gray-900 dark:text-white">Gói Cơ Bản (Free)</h3>
-            <p className="mt-4 text-sm leading-6 text-gray-600 dark:text-neutral-400">Trải nghiệm tính năng trích xuất từ vựng cơ bản.</p>
+            <h3 className="text-lg font-semibold leading-8 text-gray-900 dark:text-white">{freePlan.name}</h3>
+            <p className="mt-4 text-sm leading-6 text-gray-600 dark:text-neutral-400">{freePlan.description}</p>
             <p className="mt-6 flex items-baseline gap-x-1">
-              <span className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white">0đ</span>
+              <span className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white">{freePlan.price_usd.toLocaleString('vi-VN')}đ</span>
               <span className="text-sm font-semibold leading-6 text-gray-600 dark:text-neutral-400">/tháng</span>
             </p>
             {isPro ? (
@@ -40,10 +59,9 @@ export default async function PricingPage() {
               </Link>
             )}
             <ul role="list" className="mt-8 space-y-3 text-sm leading-6 text-gray-600 dark:text-neutral-300">
-              <li className="flex gap-x-3"><Check className="h-6 w-5 flex-none text-blue-600" /> Tối đa 30 phút / video</li>
-              <li className="flex gap-x-3"><Check className="h-6 w-5 flex-none text-blue-600" /> 35 từ vựng cốt lõi mỗi video</li>
-              <li className="flex gap-x-3 text-gray-400 dark:text-neutral-600"><Check className="h-6 w-5 flex-none" /> <del>Không giới hạn video (chỉ 5 video/ngày)</del></li>
-              <li className="flex gap-x-3 text-gray-400 dark:text-neutral-600"><Check className="h-6 w-5 flex-none" /> <del>Hỗ trợ đa ngôn ngữ (Sắp ra mắt)</del></li>
+              <li className="flex gap-x-3"><Check className="h-6 w-5 flex-none text-blue-600" /> {freePlan.monthly_transcription_minutes > 100000 ? "Không giới hạn" : `Tối đa ${freePlan.monthly_transcription_minutes} phút / video`}</li>
+              <li className="flex gap-x-3"><Check className="h-6 w-5 flex-none text-blue-600" /> {freePlan.max_vocabulary_per_video} từ vựng cốt lõi mỗi video</li>
+              <li className="flex gap-x-3"><Check className="h-6 w-5 flex-none text-blue-600" /> Tối đa {freePlan.monthly_video_count} video / tháng</li>
             </ul>
           </div>
 
@@ -55,10 +73,10 @@ export default async function PricingPage() {
                 Khuyên Dùng
               </span>
             </div>
-            <h3 className="text-lg font-semibold leading-8 text-yellow-900 dark:text-amber-400">Gói PRO</h3>
-            <p className="mt-4 text-sm leading-6 text-gray-600 dark:text-neutral-400">Dành cho người học ngoại ngữ nghiêm túc và chuyên nghiệp.</p>
+            <h3 className="text-lg font-semibold leading-8 text-yellow-900 dark:text-amber-400">{proPlan.name}</h3>
+            <p className="mt-4 text-sm leading-6 text-gray-600 dark:text-neutral-400">{proPlan.description}</p>
             <p className="mt-6 flex items-baseline gap-x-1">
-              <span className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white">69.000đ</span>
+              <span className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white">{proPlan.price_usd.toLocaleString('vi-VN')}đ</span>
               <span className="text-sm font-semibold leading-6 text-gray-600 dark:text-neutral-400">/tháng</span>
             </p>
             {isPro ? (
@@ -71,11 +89,9 @@ export default async function PricingPage() {
               </button>
             )}
             <ul role="list" className="mt-8 space-y-3 text-sm leading-6 text-gray-700 dark:text-neutral-300">
-              <li className="flex gap-x-3"><Check className="h-6 w-5 flex-none text-amber-500" /> <strong>Không giới hạn độ dài video</strong></li>
-              <li className="flex gap-x-3"><Check className="h-6 w-5 flex-none text-amber-500" /> Trích xuất siêu sâu <strong>50+ từ vựng/thành ngữ</strong></li>
-              <li className="flex gap-x-3"><Check className="h-6 w-5 flex-none text-amber-500" /> Không giới hạn số lượng video tải lên</li>
-              <li className="flex gap-x-3"><Check className="h-6 w-5 flex-none text-amber-500" /> Ưu tiên tốc độ xử lý AI (Nhanh gấp 3x)</li>
-              <li className="flex gap-x-3"><Check className="h-6 w-5 flex-none text-amber-500" /> Phân tích ngữ pháp và sắc thái biểu đạt</li>
+              <li className="flex gap-x-3"><Check className="h-6 w-5 flex-none text-amber-500" /> <strong>{proPlan.monthly_transcription_minutes > 100000 ? "Không giới hạn độ dài video" : `Tối đa ${proPlan.monthly_transcription_minutes} phút/video`}</strong></li>
+              <li className="flex gap-x-3"><Check className="h-6 w-5 flex-none text-amber-500" /> Trích xuất siêu sâu <strong>{proPlan.max_vocabulary_per_video}+ từ vựng/thành ngữ</strong></li>
+              <li className="flex gap-x-3"><Check className="h-6 w-5 flex-none text-amber-500" /> Tối đa {proPlan.monthly_video_count} video / tháng</li>
             </ul>
           </div>
 

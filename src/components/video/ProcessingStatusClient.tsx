@@ -67,7 +67,7 @@ export default function ProcessingStatusClient({ jobId, assetId }: { jobId?: str
   } else if (status === "transcribing") {
     progress = 50;
     text = "Đang phân tích và chuyển đổi giọng nói thành văn bản...";
-  } else if (status === "extracting_vocab") {
+  } else if (status === "analyzing") {
     progress = 80;
     text = "AI đang đọc kịch bản và vắt kiệt từ vựng hay...";
   } else if (status === "completed") {
@@ -82,7 +82,7 @@ export default function ProcessingStatusClient({ jobId, assetId }: { jobId?: str
     <div className="max-w-2xl mx-auto mt-12 p-8 bg-white rounded-2xl shadow-sm border border-gray-100 text-center dark:bg-[#0a0a0a] dark:border-neutral-800">
       <div className="mb-8">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Đang xử lý Video</h2>
-        <p className="text-gray-500 dark:text-neutral-400">Quá trình này thường mất khoảng 1 - 3 phút. Vui lòng không đóng trang này.</p>
+        <p className="text-gray-500 dark:text-neutral-400">Quá trình này thường mất khoảng 1 - 3 phút.</p>
       </div>
 
       <div className="relative pt-1 mb-8">

@@ -3,7 +3,7 @@ import { getProvider } from "./provider";
 
 export const GrammarItemSchema = z.object({
   grammarPattern: z.string().describe("Cấu trúc ngữ pháp chính (VD: Present Perfect, S + used to + V...)"),
-  level: z.string().optional().default("").describe("Trình độ ước lượng (A1-C2)"),
+  level: z.string().optional().default("").describe("Trình độ ước lượng (VD: B1, HSK 3, N4...)"),
   meaningVi: z.string().optional().default("").describe("Ý nghĩa của cấu trúc bằng tiếng Việt"),
   explanationVi: z.string().optional().default("").describe("Giải thích chi tiết cách sử dụng trong ngữ cảnh"),
   originalSentence: z.string().optional().default("").describe("Câu gốc trong video chứa cấu trúc này"),
@@ -40,10 +40,24 @@ QUY TẮC QUAN TRỌNG:
 6. KHÔNG bịa timestamp (để null nếu không xác định được chính xác).
 7. TRẢ VỀ KẾT QUẢ DƯỚI DẠNG JSON. Không bao gồm markdown hay backticks.`;
 
+  const langLower = (settings.targetLanguage || 'English').toLowerCase();
+  let levelSystem = "CEFR (A1 - C2)";
+  let levelExample = "B2";
+  if (langLower.includes("chinese") || langLower.includes("trung")) {
+    levelSystem = "HSK (HSK 1 - HSK 6)";
+    levelExample = "HSK 3";
+  } else if (langLower.includes("japanese") || langLower.includes("nhật")) {
+    levelSystem = "JLPT (N5 - N1)";
+    levelExample = "N3";
+  } else if (langLower.includes("korean") || langLower.includes("hàn")) {
+    levelSystem = "TOPIK (Level 1 - Level 6)";
+    levelExample = "Level 3";
+  }
+
   const userPrompt = `Mục tiêu:
 - Tìm và trích xuất ${settings.targetCount || 3} cấu trúc ngữ pháp nổi bật hoặc quan trọng nhất trong đoạn văn bản.
 - Tập trung vào các thì (Tenses), câu điều kiện, cấu trúc câu phức tạp, hoặc các giới từ/liên từ đặc biệt đáng học.
-- Đánh giá trình độ (A1-C2) cho cấu trúc đó.
+- Đánh giá trình độ (${levelSystem}) cho cấu trúc đó.
 
 Transcript để phân tích:
 """
@@ -55,7 +69,7 @@ Hãy tạo JSON output theo ĐÚNG cấu trúc sau (trả về mảng items, m�
   "items": [
     {
       "grammarPattern": "Tên cấu trúc (VD: Câu điều kiện loại 2)",
-      "level": "B2",
+      "level": "${levelExample}",
       "meaningVi": "Ý nghĩa tóm tắt",
       "explanationVi": "Giải thích chi tiết cách dùng",
       "originalSentence": "Câu chứa cấu trúc trong transcript",

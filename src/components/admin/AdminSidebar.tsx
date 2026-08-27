@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, Clapperboard, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, Clapperboard, LogOut, CreditCard } from "lucide-react";
 
 export default function AdminSidebar() {
   const pathname = usePathname();
@@ -11,6 +11,7 @@ export default function AdminSidebar() {
     { name: "Overview", path: "/admin", icon: LayoutDashboard },
     { name: "Users", path: "/admin/users", icon: Users },
     { name: "Media & Jobs", path: "/admin/media", icon: Clapperboard },
+    { name: "Plans", path: "/admin/plans", icon: CreditCard },
   ];
 
   return (
@@ -18,9 +19,9 @@ export default function AdminSidebar() {
       <div className="h-16 flex items-center px-6 border-b border-slate-800 bg-slate-950/50">
         <Link href="/admin" className="flex items-center gap-2 group">
           <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center text-white font-bold group-hover:bg-indigo-400 transition-colors shadow-sm shadow-indigo-500/20">
-            A
+            L
           </div>
-          <span className="font-bold text-lg text-white tracking-tight">Admin<span className="text-indigo-400">Flow</span></span>
+          <span className="font-bold text-lg text-white tracking-tight">LUMINA <span className="text-indigo-400 text-sm">Admin</span></span>
         </Link>
       </div>
       

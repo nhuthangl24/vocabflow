@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { Users, Clapperboard, BookOpen, AlertCircle, Zap, DollarSign, TrendingUp, Activity, LayoutDashboard } from "lucide-react";
+import { Users, Clapperboard, FileText, AlertCircle, Zap, TrendingUp, Activity, LayoutDashboard } from "lucide-react";
 
 export const revalidate = 0; // Disable cache for admin
 
@@ -14,7 +14,6 @@ export default async function AdminOverviewPage() {
   const { data: { users: authUsers } } = await supabase.auth.admin.listUsers();
   const totalUsers = authUsers.length;
   const proUsers = authUsers.filter(u => u.user_metadata?.plan === 'pro').length;
-  const estimatedMRR = proUsers * 9; // $9 per user
 
   const { count: mediaCount } = await supabase
     .from("media_assets")
@@ -24,6 +23,10 @@ export default async function AdminOverviewPage() {
     .from("vocabulary_items")
     .select("*", { count: "exact", head: true });
 
+  const { count: totalJobsCount } = await supabase
+    .from("transcript_jobs")
+    .select("*", { count: "exact", head: true });
+    
   const { count: failedJobsCount } = await supabase
     .from("transcript_jobs")
     .select("*", { count: "exact", head: true })
@@ -36,16 +39,17 @@ export default async function AdminOverviewPage() {
     .order("created_at", { ascending: false })
     .limit(5);
 
-  const arpu = totalUsers > 0 ? (estimatedMRR / totalUsers).toFixed(2) : "0.00";
-  const conversionRate = totalUsers > 0 ? ((proUsers / totalUsers) * 100).toFixed(1) : "0.0";
+  const tJobs = totalJobsCount || 0;
+  const fJobs = failedJobsCount || 0;
+  const successRate = tJobs > 0 ? (((tJobs - fJobs) / tJobs) * 100).toFixed(1) : "0.0";
 
   const stats = [
-    { name: "Total Users", value: totalUsers.toLocaleString(), icon: Users, color: "text-blue-500", glow: "shadow-blue-500/20" },
+    { name: "Người dùng", value: totalUsers.toLocaleString(), icon: Users, color: "text-blue-500", glow: "shadow-blue-500/20" },
     { name: "Pro Users", value: proUsers.toLocaleString(), icon: Zap, color: "text-amber-500", glow: "shadow-amber-500/20" },
-    { name: "Conversion Rate", value: `${conversionRate}%`, icon: TrendingUp, color: "text-purple-500", glow: "shadow-purple-500/20" },
-    { name: "Estimated MRR", value: `$${estimatedMRR.toLocaleString()}`, icon: DollarSign, color: "text-emerald-500", glow: "shadow-emerald-500/20" },
-    { name: "Avg Rev Per User", value: `$${arpu}`, icon: Activity, color: "text-indigo-500", glow: "shadow-indigo-500/20" },
-    { name: "Total Media Jobs", value: (mediaCount || 0).toLocaleString(), icon: Clapperboard, color: "text-rose-500", glow: "shadow-rose-500/20" },
+    { name: "Tỉ lệ Thành công", value: `${successRate}%`, icon: TrendingUp, color: "text-emerald-500", glow: "shadow-emerald-500/20" },
+    { name: "Video Đã tạo", value: (mediaCount || 0).toLocaleString(), icon: Clapperboard, color: "text-purple-500", glow: "shadow-purple-500/20" },
+    { name: "Từ vựng AI", value: (vocabCount || 0).toLocaleString(), icon: FileText, color: "text-indigo-500", glow: "shadow-indigo-500/20" },
+    { name: "Jobs Bị Lỗi", value: fJobs.toLocaleString(), icon: Activity, color: "text-rose-500", glow: "shadow-rose-500/20" },
   ];
 
   return (
