@@ -79,10 +79,10 @@ export default function ProcessingStatusClient({ jobId, assetId }: { jobId?: str
   }
 
   return (
-    <div className="max-w-2xl mx-auto mt-12 p-8 bg-white rounded-2xl shadow-sm border border-gray-100 text-center">
+    <div className="max-w-2xl mx-auto mt-12 p-8 bg-white rounded-2xl shadow-sm border border-gray-100 text-center dark:bg-[#0a0a0a] dark:border-neutral-800">
       <div className="mb-8">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Đang xử lý Video</h2>
-        <p className="text-gray-500">Quá trình này có thể mất vài chục giây. Vui lòng không đóng trang này.</p>
+        <p className="text-gray-500 dark:text-neutral-400">Quá trình này thường mất khoảng 1 - 3 phút. Vui lòng không đóng trang này.</p>
       </div>
 
       <div className="relative pt-1 mb-8">
@@ -98,12 +98,12 @@ export default function ProcessingStatusClient({ jobId, assetId }: { jobId?: str
             </span>
           </div>
         </div>
-        <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-gray-100">
+        <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-gray-100 dark:bg-neutral-900">
           <div style={{ width: `${progress}%` }} className={`shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center transition-all duration-500 ${status === 'failed' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
         </div>
       </div>
 
-      <div className="flex items-center justify-center gap-3 text-gray-700 font-medium">
+      <div className="flex items-center justify-center gap-3 text-gray-700 font-medium dark:text-neutral-200">
         {status === "failed" ? (
           <div className="text-red-500 flex flex-col items-center">
             <span className="mb-2">❌ Xử lý thất bại</span>

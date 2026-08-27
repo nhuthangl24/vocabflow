@@ -12,8 +12,8 @@ export default function UploadMedia({ userId }: { userId: string }) {
   
   const [file, setFile] = useState<File | null>(null);
   const [youtubeUrl, setYoutubeUrl] = useState("");
-  
   const [targetLanguage, setTargetLanguage] = useState("English");
+  const [targetCount, setTargetCount] = useState(35);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -47,7 +47,7 @@ export default function UploadMedia({ userId }: { userId: string }) {
           type,
           storagePath: uploadData.path,
           sizeBytes: file.size,
-          settings: { targetLanguage }
+          settings: { targetLanguage, targetCount }
         });
 
       } else {
@@ -91,25 +91,25 @@ export default function UploadMedia({ userId }: { userId: string }) {
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden">
-            <div className="flex justify-between items-center p-6 border-b border-gray-100">
+          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden dark:bg-[#0a0a0a]">
+            <div className="flex justify-between items-center p-6 border-b border-gray-100 dark:border-neutral-800">
               <h3 className="text-xl font-bold text-gray-900">Thêm bài học mới</h3>
-              <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-gray-600 dark:text-neutral-400">
                 <X className="w-5 h-5" />
               </button>
             </div>
             
             <div className="p-6">
               {/* Tabs */}
-              <div className="flex p-1 mb-6 bg-gray-100 rounded-lg">
+              <div className="flex p-1 mb-6 bg-gray-100 rounded-lg dark:bg-neutral-900">
                 <button
-                  className={`flex-1 flex justify-center items-center gap-2 py-2 text-sm font-medium rounded-md transition-all ${activeTab === 'youtube' ? 'bg-white text-blue-700 shadow' : 'text-gray-600 hover:text-gray-900'}`}
+                  className={`flex-1 flex justify-center items-center gap-2 py-2 text-sm font-medium rounded-md transition-all ${activeTab === 'youtube' ? 'bg-white text-blue-700 shadow' : 'text-gray-600 hover:text-gray-900'} dark:bg-[#0a0a0a]`}
                   onClick={() => setActiveTab('youtube')}
                 >
                   <LinkIcon className="w-4 h-4" /> Link YouTube
                 </button>
                 <button
-                  className={`flex-1 flex justify-center items-center gap-2 py-2 text-sm font-medium rounded-md transition-all ${activeTab === 'upload' ? 'bg-white text-blue-700 shadow' : 'text-gray-600 hover:text-gray-900'}`}
+                  className={`flex-1 flex justify-center items-center gap-2 py-2 text-sm font-medium rounded-md transition-all ${activeTab === 'upload' ? 'bg-white text-blue-700 shadow' : 'text-gray-600 hover:text-gray-900'} dark:bg-[#0a0a0a]`}
                   onClick={() => setActiveTab('upload')}
                 >
                   <UploadCloud className="w-4 h-4" /> Tải file lên
@@ -126,11 +126,11 @@ export default function UploadMedia({ userId }: { userId: string }) {
 
                 {activeTab === 'youtube' ? (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Đường dẫn YouTube</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-neutral-200">Đường dẫn YouTube</label>
                     <input
                       type="url"
                       required
-                      className="block w-full rounded-lg border-gray-300 bg-gray-50 p-3 text-sm text-gray-900 border focus:border-blue-500 focus:ring-blue-500 focus:bg-white transition-colors outline-none"
+                      className="block w-full rounded-lg border-gray-300 bg-gray-50 p-3 text-sm text-gray-900 border focus:border-blue-500 focus:ring-blue-500 focus:bg-white transition-colors outline-none dark:bg-[#0a0a0a] dark:border-neutral-600"
                       value={youtubeUrl}
                       onChange={(e) => setYoutubeUrl(e.target.value)}
                       placeholder="https://www.youtube.com/watch?v=..."
@@ -138,47 +138,73 @@ export default function UploadMedia({ userId }: { userId: string }) {
                   </div>
                 ) : (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">File Video / Audio / Subtitle</label>
-                    <div className="mt-1 flex justify-center rounded-lg border border-dashed border-gray-300 px-6 py-10 hover:bg-gray-50 transition-colors">
+                    <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-neutral-200">File Video / Audio / Subtitle</label>
+                    <div className="mt-1 flex justify-center rounded-lg border border-dashed border-gray-300 px-6 py-10 hover:bg-gray-50 transition-colors dark:border-neutral-600">
                       <div className="text-center">
                         <UploadCloud className="mx-auto h-12 w-12 text-gray-300" aria-hidden="true" />
-                        <div className="mt-4 flex text-sm leading-6 text-gray-600 justify-center">
+                        <div className="mt-4 flex text-sm leading-6 text-gray-600 justify-center dark:text-neutral-300">
                           <label
                             htmlFor="file-upload"
-                            className="relative cursor-pointer rounded-md bg-white font-semibold text-blue-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-blue-600 focus-within:ring-offset-2 hover:text-blue-500"
+                            className="relative cursor-pointer rounded-md bg-white font-semibold text-blue-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-blue-600 focus-within:ring-offset-2 hover:text-blue-500 dark:bg-[#0a0a0a]"
                           >
                             <span>Tải file lên</span>
                             <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={(e) => setFile(e.target.files?.[0] || null)} />
                           </label>
                           <p className="pl-1">hoặc kéo thả</p>
                         </div>
-                        <p className="text-xs leading-5 text-gray-500 mt-2">MP4, MP3, WAV, M4A, SRT, VTT</p>
+                        <p className="text-xs leading-5 text-gray-500 mt-2 dark:text-neutral-400">MP4, MP3, WAV, M4A, SRT, VTT</p>
                         {file && <p className="text-sm font-medium text-blue-600 mt-2">{file.name}</p>}
                       </div>
                     </div>
                   </div>
                 )}
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ngôn ngữ muốn học</label>
-                  <select
-                    className="block w-full rounded-lg border-gray-300 bg-gray-50 p-3 text-sm text-gray-900 border focus:border-blue-500 focus:ring-blue-500 outline-none"
-                    value={targetLanguage}
-                    onChange={(e) => setTargetLanguage(e.target.value)}
-                  >
-                    <option value="English">Tiếng Anh</option>
-                    <option value="Chinese">Tiếng Trung</option>
-                    <option value="Japanese">Tiếng Nhật</option>
-                    <option value="Korean">Tiếng Hàn</option>
-                    <option value="French">Tiếng Pháp</option>
-                  </select>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-neutral-200">Ngôn ngữ muốn học</label>
+                    <select
+                      className="block w-full rounded-lg border-gray-300 bg-gray-50 p-3 text-sm text-gray-900 border focus:border-blue-500 focus:ring-blue-500 outline-none dark:bg-[#0a0a0a] dark:border-neutral-600"
+                      value={targetLanguage}
+                      onChange={(e) => setTargetLanguage(e.target.value)}
+                    >
+                      <option value="English">Tiếng Anh</option>
+                      <option value="Chinese">Tiếng Trung</option>
+                      <option value="Japanese">Tiếng Nhật</option>
+                      <option value="Korean">Tiếng Hàn</option>
+                      <option value="French">Tiếng Pháp</option>
+                    </select>
+                  </div>
+
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-neutral-200">Số lượng từ vựng</label>
+                    {isPro ? (
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min={5}
+                          max={100}
+                          value={targetCount}
+                          onChange={(e) => setTargetCount(Number(e.target.value))}
+                          placeholder="Số từ"
+                          className="block w-full h-[46px] rounded-lg border border-gray-300 bg-white p-3 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:bg-neutral-900 dark:border-neutral-700 dark:text-neutral-200"
+                        />
+                      </div>
+                    ) : (
+                      <div className="block w-full h-[46px] rounded-lg border border-gray-300 bg-gray-100 p-3 text-sm text-gray-400 flex items-center justify-between cursor-not-allowed dark:bg-[#0a0a0a] dark:border-neutral-700 dark:text-neutral-500 relative group">
+                        <span>35 từ vựng (Free)</span>
+                        <div className="absolute hidden group-hover:block bottom-full left-1/2 -translate-x-1/2 mb-2 w-max bg-neutral-900 text-white text-[10px] py-1 px-2 rounded">
+                          Lên Pro để nhập số lượng
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="pt-4 flex justify-end gap-3">
                   <button
                     type="button"
                     onClick={() => setIsOpen(false)}
-                    className="rounded-lg px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
+                    className="rounded-lg px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors dark:text-neutral-200 dark:bg-neutral-900"
                     disabled={uploading}
                   >
                     Hủy

@@ -37,12 +37,13 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
   // Fetch job
   const { data: job } = await supabase
     .from("transcript_jobs")
-    .select("id, status")
+    .select("id, status, settings")
     .eq("media_asset_id", asset.id)
     .single();
 
-  // Fetch vocabulary
+  // Fetch vocabulary & grammar
   let vocabulary = [];
+  let grammar = [];
   if (job && job.status === "completed") {
     const { data: vocabData } = await supabase
       .from("vocabulary_items")
@@ -50,18 +51,24 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
       .eq("job_id", job.id);
     
     if (vocabData) vocabulary = vocabData;
+
+    const { data: grammarData } = await supabase
+      .from("grammar_items")
+      .select("*")
+      .eq("job_id", job.id);
+    
+    if (grammarData) grammar = grammarData;
   }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-6">
-        <Link href="/dashboard" className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-blue-600 transition-colors mb-4 bg-gray-50 px-3 py-1.5 rounded-lg hover:bg-blue-50 border border-gray-100">
+        <Link href="/dashboard" className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-blue-600 transition-colors mb-4 bg-gray-50 px-3 py-1.5 rounded-lg hover:bg-blue-50 border border-gray-100 dark:text-neutral-400 dark:bg-[#0a0a0a] dark:border-neutral-800">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Quay lại Dashboard
         </Link>
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">{asset.title}</h1>
-          <div className="text-sm px-2.5 py-1 bg-green-100 text-green-800 rounded-full font-medium">Hoàn tất</div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white line-clamp-2">{asset.title}</h1>
         </div>
       </div>
       
@@ -71,7 +78,9 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
         <VideoWorkspaceClient 
           videoUrl={videoUrl} 
           vocabulary={vocabulary} 
-          userId={user.id}
+          grammar={grammar} 
+          userId={user.id} 
+          targetLanguage={job?.settings?.targetLanguage || "English"}
         />
       )}
     </div>

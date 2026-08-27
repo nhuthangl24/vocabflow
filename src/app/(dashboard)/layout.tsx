@@ -11,10 +11,10 @@ export default async function DashboardLayout({
   const { data: { user } } = await supabase.auth.getUser();
 
   return (
-    <div className="flex h-screen bg-[#F8FAFC] font-sans overflow-hidden">
+    <div className="flex h-screen bg-grid-paper font-sans overflow-hidden">
       <Sidebar />
       <div className="flex-1 flex flex-col h-screen relative min-w-0">
-        <MobileHeader userEmail={user?.email || "User"} />
+        <MobileHeader user={user} />
         <main className="flex-1 overflow-y-auto relative z-0">
           {children}
         </main>

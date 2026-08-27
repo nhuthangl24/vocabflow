@@ -9,39 +9,60 @@ export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect("/login");
+  let mediaAssets = [];
+  let vocabCount = 0;
+  let todayCount = 0;
+
+  // Check if user is Pro
+  const isPro = user?.user_metadata?.plan === 'pro'; 
+  const dailyLimit = isPro ? 15 : 2;
+
+  if (user) {
+    // Fetch recent media assets
+    const { data: ma } = await supabase
+      .from("media_assets")
+      .select("*, transcript_jobs(status, error_message)")
+      .neq("status", "deleted")
+      .order("created_at", { ascending: false })
+      .limit(4);
+      
+    if (ma) mediaAssets = ma;
+
+    // Fetch total vocabulary items for user
+    const { count: vc } = await supabase
+      .from("vocabulary_items")
+      .select("*", { count: "exact", head: true });
+      
+    vocabCount = vc || 0;
+
+    // Fetch today's video count for rate limiting
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const { count: tc } = await supabase
+      .from("media_assets")
+      .select("*", { count: "exact", head: true })
+      .gte("created_at", today.toISOString());
+    
+    todayCount = tc || 0;
   }
-
-  // Fetch recent media assets
-  const { data: mediaAssets } = await supabase
-    .from("media_assets")
-    .select("*, transcript_jobs(status, error_message)")
-    .order("created_at", { ascending: false })
-    .limit(10);
-
-  // Fetch total vocabulary items for user
-  const { count: vocabCount } = await supabase
-    .from("vocabulary_items")
-    .select("*", { count: "exact", head: true });
 
   // Rough estimation of processing time/learning time (e.g. 15 mins per video)
   const estimatedMins = (mediaAssets?.length || 0) * 15;
   const learningTime = estimatedMins >= 60 ? `${(estimatedMins / 60).toFixed(1)}h` : `${estimatedMins}m`;
 
   return (
-    <div className="p-4 sm:p-8 max-w-7xl mx-auto mb-safe">
+    <div className="p-4 sm:p-5 w-full mx-auto mb-safe">
       
       {/* Page Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Overview</h1>
-        <p className="mt-1 text-sm font-medium text-slate-500">
-          {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Tổng quan</h1>
+        <p className="mt-1 text-sm font-medium text-slate-500 dark:text-neutral-400">
+          {new Date().toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </p>
       </div>
 
       {/* Hero Banner for Uploading */}
-      <InlineUploadBanner userId={user.id} />
+      <InlineUploadBanner userId={user?.id || ""} isPro={isPro} todayCount={todayCount} dailyLimit={dailyLimit} />
 
       {/* Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -51,36 +72,36 @@ export default async function DashboardPage() {
           
           {/* Vercel-style Stats Row */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-slate-200 dark:border-neutral-800 p-5 shadow-sm hover:shadow-md transition-shadow dark:border-neutral-700">
               <div className="flex items-center gap-2 mb-3">
-                <Video className="w-4 h-4 text-slate-400" />
-                <span className="text-[13px] font-bold text-slate-500">Processed Videos</span>
+                <Video className="w-4 h-4 text-slate-400 dark:text-neutral-400" />
+                <span className="text-[13px] font-bold text-slate-500 dark:text-neutral-400">Video đã xử lý</span>
               </div>
               <div className="flex items-end gap-2">
-                <span className="text-2xl font-bold text-slate-900">{mediaAssets?.length || 0}</span>
-                <span className="text-xs font-semibold text-emerald-500 mb-1">Total</span>
+                <span className="text-2xl font-bold text-slate-900 dark:text-white">{mediaAssets?.length || 0}</span>
+                <span className="text-xs font-semibold text-emerald-500 mb-1">Tổng</span>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-slate-200 dark:border-neutral-800 p-5 shadow-sm hover:shadow-md transition-shadow dark:border-neutral-700">
               <div className="flex items-center gap-2 mb-3">
-                <Layers className="w-4 h-4 text-slate-400" />
-                <span className="text-[13px] font-bold text-slate-500">Vocabulary Saved</span>
+                <Layers className="w-4 h-4 text-slate-400 dark:text-neutral-400" />
+                <span className="text-[13px] font-bold text-slate-500 dark:text-neutral-400">Từ vựng đã lưu</span>
               </div>
               <div className="flex items-end gap-2">
-                <span className="text-2xl font-bold text-slate-900">{vocabCount || 0}</span>
-                <span className="text-xs font-semibold text-emerald-500 mb-1">Words</span>
+                <span className="text-2xl font-bold text-slate-900 dark:text-white">{vocabCount || 0}</span>
+                <span className="text-xs font-semibold text-emerald-500 mb-1">Từ</span>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-slate-200 dark:border-neutral-800 p-5 shadow-sm hover:shadow-md transition-shadow dark:border-neutral-700">
               <div className="flex items-center gap-2 mb-3">
-                <Clock className="w-4 h-4 text-slate-400" />
-                <span className="text-[13px] font-bold text-slate-500">Learning Time</span>
+                <Clock className="w-4 h-4 text-slate-400 dark:text-neutral-400" />
+                <span className="text-[13px] font-bold text-slate-500 dark:text-neutral-400">Thời gian học</span>
               </div>
               <div className="flex items-end gap-2">
-                <span className="text-2xl font-bold text-slate-900">{learningTime}</span>
-                <span className="text-xs font-semibold text-slate-400 mb-1">Est. Lifetime</span>
+                <span className="text-2xl font-bold text-slate-900 dark:text-white">{learningTime}</span>
+                <span className="text-xs font-semibold text-slate-400 mb-1 dark:text-neutral-400">Ước tính</span>
               </div>
             </div>
           </div>
@@ -88,10 +109,10 @@ export default async function DashboardPage() {
           {/* Videos Table/List */}
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Recent Activity</h2>
-              <button className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">View Library &rarr;</button>
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Hoạt động gần đây</h2>
+              <button className="text-xs font-semibold text-indigo-600 dark:text-neutral-200 hover:text-indigo-700">Xem thư viện &rarr;</button>
             </div>
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-slate-200 dark:border-neutral-800 shadow-sm overflow-hidden dark:border-neutral-700">
               <RecentVideosClient initialAssets={mediaAssets || []} />
             </div>
           </div>
@@ -104,29 +125,36 @@ export default async function DashboardPage() {
 
 
           {/* AI Usage Card */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+          <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-slate-200 dark:border-neutral-800 p-6 shadow-sm dark:border-neutral-700">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Zap className="w-4 h-4 text-amber-500" />
-                AI Processing Quota
+                Giới hạn AI trong ngày
               </h3>
-              <span className="text-xs font-bold text-slate-400">FREE</span>
+              <span className={`text-xs font-bold ${isPro ? 'text-amber-500' : 'text-slate-400'}`}>
+                {isPro ? 'PRO' : 'MIỄN PHÍ'}
+              </span>
             </div>
             
             <div className="mb-2 flex justify-between items-end">
-              <span className="text-2xl font-bold text-slate-900">{mediaAssets?.length || 0}<span className="text-sm text-slate-400 ml-1">videos processed</span></span>
-              <span className="text-sm font-bold text-slate-900">10 total</span>
+              <span className="text-2xl font-bold text-slate-900 dark:text-white">{todayCount}<span className="text-sm text-slate-400 ml-1 dark:text-neutral-400">video hôm nay</span></span>
+              <span className="text-sm font-bold text-slate-900 dark:text-neutral-300">tối đa {dailyLimit}</span>
             </div>
             
-            <div className="w-full bg-slate-100 rounded-full h-2 mb-4 overflow-hidden">
-              <div className="bg-amber-400 h-2 rounded-full transition-all duration-1000" style={{ width: `${Math.min(((mediaAssets?.length || 0) / 10) * 100, 100)}%` }}></div>
+            <div className="w-full bg-slate-100 dark:bg-neutral-900 rounded-full h-2 mb-4 overflow-hidden">
+              <div 
+                className={`h-2 rounded-full transition-all duration-1000 ${todayCount >= dailyLimit ? 'bg-rose-500' : 'bg-amber-400'}`} 
+                style={{ width: `${Math.min((todayCount / dailyLimit) * 100, 100)}%` }}
+              ></div>
             </div>
             
-            <div className="pt-4 border-t border-slate-100 mt-4">
-              <Link href="/pricing" className="text-sm font-bold text-indigo-600 hover:text-indigo-700 flex items-center justify-center gap-1 w-full">
-                Upgrade for unlimited &rarr;
-              </Link>
-            </div>
+            {!isPro && (
+              <div className="pt-4 border-t border-slate-100 dark:border-neutral-800 mt-4">
+                <Link href="/pricing" className="text-sm font-bold text-indigo-600 dark:text-neutral-200 hover:text-indigo-700 flex items-center justify-center gap-1 w-full">
+                  Nâng cấp để học nhiều hơn &rarr;
+                </Link>
+              </div>
+            )}
           </div>
           
 

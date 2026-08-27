@@ -58,14 +58,27 @@ QUY TẮC QUAN TRỌNG:
 2. Chỉ chọn từ tiếng ${settings.targetLanguage || 'Anh'} xuất hiện trong transcript.
 3. Cân bằng việc trích xuất: Lấy CẢ từ đơn (Single words) VÀ Cụm từ/Thành ngữ (Phrases/Idioms).
 4. Phân loại chính xác vào trường "type" là "word" (từ đơn) hoặc "phrase" (cụm từ/thành ngữ).
-5. Câu gốc phải được trích xuất chính xác từ transcript. Nghĩa phải dựa trên đúng ngữ cảnh của câu gốc.
-6. KHÔNG bịa timestamp (để null nếu không xác định được chính xác).
-7. TRẢ VỀ KẾT QUẢ DƯỚI DẠNG JSON. Không bao gồm markdown hay backticks.`;
+5. Về Câu gốc (originalSentence): Nếu transcript cùng ngôn ngữ đích, trích xuất chính xác từ transcript. NẾU TRANSCRIPT LÀ NGÔN NGỮ KHÁC (vd transcript tiếng Việt nhưng học tiếng Anh), phần "originalSentence" PHẢI LÀ CÂU ĐÃ ĐƯỢC DỊCH SANG TIẾNG ANH chứa từ vựng đó (KHÔNG được để nguyên tiếng Việt).
+6. TUY NHIÊN, ý nghĩa chung (meaningVi), giải thích (usageNoteVi) và CÁC VÍ DỤ BỔ SUNG (examples) PHẢI LÀ NGHĨA PHỔ QUÁT, THÔNG DỤNG TRONG ĐỜI SỐNG HẰNG NGÀY. KHÔNG ĐƯỢC giải thích hay lấy ví dụ xoay quanh chủ đề hẹp của video (ví dụ: nếu video nói về cờ vua, đừng giải thích từ theo nghĩa cờ vua, hãy giải thích theo nghĩa đời sống bình thường).
+7. KHÔNG bịa timestamp (để null nếu không xác định được chính xác).
+8. TRẢ VỀ KẾT QUẢ DƯỚI DẠNG JSON. Không bao gồm markdown hay backticks.`;
+
+  const langLower = (settings.targetLanguage || 'English').toLowerCase();
+  let levelSystem = "CEFR (A1 - C2)";
+  if (langLower.includes("chinese") || langLower.includes("trung")) {
+    levelSystem = "HSK (HSK 1 - HSK 6)";
+  } else if (langLower.includes("japanese") || langLower.includes("nhật")) {
+    levelSystem = "JLPT (N5 - N1)";
+  } else if (langLower.includes("korean") || langLower.includes("hàn")) {
+    levelSystem = "TOPIK (Level 1 - Level 6)";
+  }
 
   const userPrompt = `Mục tiêu:
-- Tự động đánh giá độ khó của từ vựng (A1 - C2) và gắn nhãn (level) chính xác.
-- TRÍCH XUẤT TỪ VỰNG Ở MỌI CẤP ĐỘ (từ A1 cho người mới bắt đầu đến C2 cho người học nâng cao).
-- BỎ QUA các hư từ, từ chức năng ngữ pháp quá cơ bản (như: a, an, the, he, she, it, is, am, are, and, but...). CHỈ lấy các danh từ, động từ, tính từ, trạng từ có ý nghĩa thực tế.
+- Tự động đánh giá độ khó của từ vựng và gắn nhãn (level) chính xác theo hệ thống chuẩn của ngôn ngữ này: ${levelSystem}.
+- TRÍCH XUẤT TỪ VỰNG Ở MỌI CẤP ĐỘ (từ cơ bản nhất đến nâng cao nhất theo hệ thống ${levelSystem}).
+- TUYỆT ĐỐI BỎ QUA: Danh từ riêng (Tên người, địa danh, Proper Nouns), số đếm, chữ viết tắt, ký hiệu (như C4, E3...), các hư từ cơ bản (a, an, the, he, she...), và các từ cảm thán vô nghĩa (Ok, Ah...).
+- CHỈ TRÍCH XUẤT các danh từ, động từ, tính từ, trạng từ, cụm từ có ý nghĩa phổ quát, thực sự hữu ích để người dùng có thể áp dụng vào giao tiếp hoặc học thuật.
+- XỬ LÝ ĐA NGÔN NGỮ: Nếu Transcript gốc KHÔNG PHẢI là tiếng ${settings.targetLanguage || 'Anh'} (ví dụ: video tiếng Nhật, tiếng Tây Ban Nha...), bạn PHẢI tự động dịch nội dung đó sang tiếng ${settings.targetLanguage || 'Anh'} trước, và TRÍCH XUẤT TỪ VỰNG BẰNG TIẾNG ${settings.targetLanguage || 'Anh'} tương ứng với nội dung đó. Không trích xuất ngôn ngữ gốc.
 - Số lượng từ: TRÍCH XUẤT ĐÚNG ${settings.targetCount || 5} TỪ ĐƠN HOẶC CỤM TỪ ĐÁNG HỌC NHẤT. KHÔNG ĐƯỢC VƯỢT QUÁ CON SỐ NÀY. (Cố gắng lấy 50% từ đơn, 50% cụm từ).
 
 Transcript để phân tích:

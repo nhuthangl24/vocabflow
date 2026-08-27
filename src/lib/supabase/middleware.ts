@@ -41,12 +41,23 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const isAuthRoute = request.nextUrl.pathname.startsWith("/login") || request.nextUrl.pathname.startsWith("/signup");
-  const isProtectedRoute = request.nextUrl.pathname.startsWith("/dashboard") || request.nextUrl.pathname.startsWith("/deck") || request.nextUrl.pathname.startsWith("/video");
+  const isProtectedRoute = request.nextUrl.pathname.startsWith("/deck") || request.nextUrl.pathname.startsWith("/video") || request.nextUrl.pathname.startsWith("/library") || request.nextUrl.pathname.startsWith("/analytics") || request.nextUrl.pathname.startsWith("/settings") || request.nextUrl.pathname.startsWith("/admin");
+  const isAdminRoute = request.nextUrl.pathname.startsWith("/admin");
 
   if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
+  }
+
+  // Admin access check
+  if (user && isAdminRoute) {
+    const adminEmails = process.env.ADMIN_EMAILS ? process.env.ADMIN_EMAILS.split(',').map(e => e.trim().toLowerCase()) : [];
+    if (!user.email || !adminEmails.includes(user.email.toLowerCase())) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      return NextResponse.redirect(url);
+    }
   }
 
   if (user && isAuthRoute) {

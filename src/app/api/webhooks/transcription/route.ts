@@ -124,17 +124,25 @@ async function processJob(jobId: string) {
 
       // Download file from Supabase Storage or YouTube
       if (asset.type === "youtube") {
-        const ytdl = (await import("@distube/ytdl-core")).default;
-        tmpFilePath = path.join(os.tmpdir(), `dl_${Date.now()}_${asset.id}.mp4`);
+        tmpFilePath = path.join(os.tmpdir(), `dl_${Date.now()}_${asset.id}.m4a`);
         
         await new Promise<void>((resolve, reject) => {
-          const stream = ytdl(asset.source_url, { quality: 'lowest' });
-          const writeStream = fs.createWriteStream(tmpFilePath);
-          stream.pipe(writeStream);
-          stream.on('end', () => resolve());
-          writeStream.on('finish', () => resolve());
-          stream.on('error', (err: any) => reject(err));
-          writeStream.on('error', (err: any) => reject(err));
+          const { execFile } = require('child_process');
+          const args = [
+            asset.source_url,
+            '--output', tmpFilePath,
+            '--format', 'bestaudio[ext=m4a]/bestaudio/best',
+            '--no-warnings', '--no-call-home'
+          ];
+          
+          execFile('yt-dlp', args, (error: any, stdout: any, stderr: any) => {
+            if (error) {
+              console.error("yt-dlp error:", stderr);
+              reject(new Error("Failed to download youtube video with yt-dlp"));
+            } else {
+              resolve();
+            }
+          });
         });
       } else {
         const { data: fileData, error: downloadError } = await supabase.storage
@@ -202,25 +210,32 @@ async function processJob(jobId: string) {
     
     // MVP Fake Plan Logic
     const userPlan: string = "free"; 
-    const MAX_WORDS = userPlan === "pro" ? 50 : 30;
+    const MAX_ALLOWED = userPlan === "pro" ? 50 : 35;
     
-    // Only chunk if the video is extremely long (e.g., > 1 hour / ~60,000 chars)
-    // Actually, we must chunk to avoid hitting the OUTPUT token limit.
-    // Each word takes ~300 tokens to generate. Max output is usually 4096.
-    // 10 words = 3000 tokens. So we limit to max 10 words per chunk.
-    const MAX_CHUNK_SIZE = 12000; 
+    const requestedCount = job.settings?.targetCount ? Number(job.settings.targetCount) : 35;
+    const MAX_WORDS = Math.min(requestedCount, MAX_ALLOWED);
+    
+    // Calculate how many chunks we need to safely extract MAX_WORDS.
+    // Assume a safe limit of 15 words per chunk to avoid output truncation.
+    const SAFE_WORDS_PER_CHUNK = 15;
+    const minChunksForWords = Math.ceil(MAX_WORDS / SAFE_WORDS_PER_CHUNK);
+    
+    const MAX_CHARS_PER_CHUNK = 12000;
+    const minChunksForLength = Math.ceil(fullTranscript.length / MAX_CHARS_PER_CHUNK);
+    
+    const totalChunksNeeded = Math.max(minChunksForWords, minChunksForLength);
+    const actualChunkSize = Math.ceil(fullTranscript.length / totalChunksNeeded);
+
     const transcriptChunks = [];
-    
-    if (fullTranscript.length <= MAX_CHUNK_SIZE) {
+    if (totalChunksNeeded <= 1) {
       transcriptChunks.push(fullTranscript);
     } else {
-      for (let i = 0; i < fullTranscript.length; i += MAX_CHUNK_SIZE) {
-        transcriptChunks.push(fullTranscript.substring(i, i + MAX_CHUNK_SIZE));
+      for (let i = 0; i < fullTranscript.length; i += actualChunkSize) {
+        transcriptChunks.push(fullTranscript.substring(i, i + actualChunkSize));
       }
     }
 
-    // Limit to max 8 words per chunk to be absolutely safe from truncation
-    const wordsPerChunk = Math.min(8, Math.max(2, Math.ceil(MAX_WORDS / transcriptChunks.length)));
+    const wordsPerChunk = Math.ceil(MAX_WORDS / transcriptChunks.length);
     const chunkSettings = { ...job.settings, targetCount: wordsPerChunk };
 
     let allVocabItems: any[] = [];
@@ -277,6 +292,37 @@ async function processJob(jobId: string) {
 
     if (vocabInserts.length > 0) {
       await supabase.from("vocabulary_items").insert(vocabInserts);
+    }
+
+    // --- Extract Grammar ---
+    try {
+      const { extractGrammar } = await import("@/lib/ai/grammar_extractor");
+      // Truncate to ~60000 chars if it's too long, to ensure we don't blow up input tokens needlessly
+      // 60k chars is about 15k tokens, very safe for modern LLMs.
+      const grammarTargetText = fullTranscript.length > 60000 ? fullTranscript.substring(0, 60000) : fullTranscript;
+      
+      const grammarExtraction = await extractGrammar(grammarTargetText, { ...job.settings, targetCount: 5 });
+      const grammarItems = grammarExtraction?.items || [];
+      
+      const grammarInserts = grammarItems.map(item => ({
+        job_id: jobId,
+        user_id: job.user_id,
+        grammar_pattern: item.grammarPattern,
+        level: item.level,
+        meaning_vi: item.meaningVi,
+        explanation_vi: item.explanationVi,
+        original_sentence: item.originalSentence,
+        sentence_translation_vi: item.sentenceTranslationVi,
+        examples: item.examples,
+        confidence: item.confidence ? Number(item.confidence) : 1.0,
+      }));
+
+      if (grammarInserts.length > 0) {
+        await supabase.from("grammar_items").insert(grammarInserts);
+      }
+    } catch (gErr) {
+      console.error("Failed to extract grammar:", gErr);
+      // We don't fail the job if grammar fails, it's an enhancement
     }
 
     // Mark as completed

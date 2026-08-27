@@ -2,22 +2,47 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { createMediaJob } from "@/app/actions/media";
 import { Video, LinkIcon, Upload, Sparkles } from "lucide-react";
 
-export default function InlineUploadBanner({ userId }: { userId: string }) {
+export default function InlineUploadBanner({ 
+  userId, 
+  isPro = false,
+  todayCount = 0,
+  dailyLimit = 2
+}: { 
+  userId: string, 
+  isPro?: boolean,
+  todayCount?: number,
+  dailyLimit?: number
+}) {
   const router = useRouter();
   const supabase = createClient();
   const [activeTab, setActiveTab] = useState<'youtube' | 'upload'>('youtube');
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [targetLanguage, setTargetLanguage] = useState("English");
+  const [targetCount, setTargetCount] = useState<number>(isPro ? 5 : 35);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+
+  const limitReached = todayCount >= dailyLimit;
 
   const handleProcess = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (!userId) {
+      router.push('/login');
+      return;
+    }
+
+    if (limitReached) {
+      setError(`Bạn đã hết lượt tạo AI hôm nay (${todayCount}/${dailyLimit}). ${!isPro ? 'Hãy nâng cấp Pro để tiếp tục!' : ''}`);
+      return;
+    }
+
     setUploading(true);
 
     try {
@@ -32,7 +57,7 @@ export default function InlineUploadBanner({ userId }: { userId: string }) {
           storagePath: "", 
           sizeBytes: 0,
           sourceUrl: youtubeUrl,
-          settings: { targetLanguage }
+          settings: { targetLanguage, targetCount }
         });
       } else {
         // Fallback for upload via hidden file input (handled by standard click)
@@ -59,7 +84,7 @@ export default function InlineUploadBanner({ userId }: { userId: string }) {
           type,
           storagePath: uploadData.path,
           sizeBytes: file.size,
-          settings: { targetLanguage }
+          settings: { targetLanguage, targetCount }
         });
       }
 
@@ -74,35 +99,41 @@ export default function InlineUploadBanner({ userId }: { userId: string }) {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8">
-      {/* Decorative top border or subtle gradient accent */}
-      <div className="h-1.5 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500"></div>
+    <div className="bg-white dark:bg-[#0a0a0a] rounded-2xl border border-slate-200 dark:border-neutral-800 shadow-sm overflow-hidden mb-8 dark:border-neutral-700">
       
-      <div className="p-6 md:p-8 flex flex-col gap-6 relative overflow-hidden">
+      <div className="p-5 md:p-6 flex flex-col gap-4 relative overflow-hidden">
         
         {/* Background Decorative Icon */}
         <div className="absolute right-0 top-0 w-96 h-96 bg-indigo-50/50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
 
         {/* Text Section */}
         <div className="z-10 max-w-2xl">
-          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mb-2">Biến mọi video yêu thích thành bài học.</h2>
-          <p className="text-sm font-medium text-slate-500">
+          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight mb-2">Biến mọi video yêu thích thành bài học.</h2>
+          <p className="text-sm font-medium text-slate-500 dark:text-neutral-400">
             Học ngoại ngữ qua bất kỳ video YouTube nào bạn muốn. Hệ thống sẽ tự động tạo phụ đề, từ vựng và bài tập.
           </p>
         </div>
 
         {/* Input Section */}
-        <div className="w-full z-10 bg-slate-50/50 rounded-xl border border-slate-100 p-2 shadow-inner">
-          <form onSubmit={handleProcess} className="flex flex-col gap-2">
+        <div className="w-full z-10 bg-slate-50/50 dark:bg-[#0a0a0a]/50 rounded-xl border border-slate-100 dark:border-neutral-800 p-2 shadow-inner relative">
+          
+          {limitReached && (
+            <div className="absolute inset-0 bg-white/60 dark:bg-[#0a0a0a]/60 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center rounded-xl border border-rose-200 dark:border-rose-900/50">
+              <p className="text-sm font-bold text-slate-900 dark:text-white mb-2">Đã hết lượt xử lý AI hôm nay</p>
+              <Link href="/pricing" className="text-xs font-bold bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">
+                Nâng cấp Pro để mở khóa
+              </Link>
+            </div>
+          )}
+
+          <form onSubmit={handleProcess} className={`flex flex-col gap-2 ${limitReached ? 'opacity-50 pointer-events-none' : ''}`}>
             
             {/* Tabs */}
             <div className="flex items-center gap-1 px-1 pt-1 pb-2">
               <button
                 type="button"
                 onClick={() => setActiveTab('youtube')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                  activeTab === 'youtube' ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${ activeTab === 'youtube' ? 'bg-white dark:bg-neutral-900 text-indigo-600 dark:text-neutral-200 shadow-sm border border-slate-200 dark:border-neutral-700' : 'text-slate-500 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800 hover:text-slate-900 dark:hover:text-slate-100' } dark:border-neutral-700`}
               >
                 <LinkIcon className="w-3.5 h-3.5" />
                 YouTube Link
@@ -110,9 +141,7 @@ export default function InlineUploadBanner({ userId }: { userId: string }) {
               <button
                 type="button"
                 onClick={() => setActiveTab('upload')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                  activeTab === 'upload' ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${ activeTab === 'upload' ? 'bg-white dark:bg-neutral-900 text-indigo-600 dark:text-neutral-200 shadow-sm border border-slate-200 dark:border-neutral-700' : 'text-slate-500 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800 hover:text-slate-900 dark:hover:text-slate-100' } dark:border-neutral-700`}
               >
                 <Upload className="w-3.5 h-3.5" />
                 Tải video lên
@@ -127,8 +156,8 @@ export default function InlineUploadBanner({ userId }: { userId: string }) {
                   required
                   value={youtubeUrl}
                   onChange={(e) => setYoutubeUrl(e.target.value)}
-                  placeholder="Dán link YouTube vào đây..."
-                  className="flex-1 h-11 bg-white border border-slate-200 rounded-lg px-4 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm"
+                  placeholder="Dán link YouTube vào đây , ưu tiên các video có phụ đề ..."
+                  className="flex-1 h-11 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg px-4 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm"
                 />
               ) : (
                 <div className="flex-1 relative">
@@ -143,27 +172,51 @@ export default function InlineUploadBanner({ userId }: { userId: string }) {
                       }
                     }}
                   />
-                  <div className="h-11 bg-white border border-dashed border-slate-300 rounded-lg flex items-center justify-center text-sm font-medium text-slate-500 hover:bg-slate-50 hover:text-indigo-600 transition-colors shadow-sm">
+                  <div className="h-11 bg-white dark:bg-neutral-900 border border-dashed border-slate-300 dark:border-slate-600 rounded-lg flex items-center justify-center text-sm font-medium text-slate-500 dark:text-neutral-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-indigo-600 transition-colors shadow-sm dark:border-neutral-600">
                     Click để chọn hoặc kéo thả file
                   </div>
                 </div>
               )}
 
-              <select
-                value={targetLanguage}
-                onChange={(e) => setTargetLanguage(e.target.value)}
-                className="h-11 bg-white border border-slate-200 rounded-lg px-3 text-sm font-medium text-slate-700 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm w-full sm:w-32"
-              >
-                <option value="English">Tiếng Anh</option>
-                <option value="Chinese">Tiếng Trung</option>
-                <option value="Japanese">Tiếng Nhật</option>
-                <option value="Korean">Tiếng Hàn</option>
-              </select>
+              <div className="flex gap-2">
+                <select
+                  value={targetLanguage}
+                  onChange={(e) => setTargetLanguage(e.target.value)}
+                  className="h-11 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg px-3 text-sm font-medium text-slate-700 dark:text-neutral-300 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm w-32 dark:text-neutral-200"
+                >
+                  <option value="English">Tiếng Anh</option>
+                  <option value="Chinese">Tiếng Trung</option>
+                  <option value="Japanese">Tiếng Nhật</option>
+                  <option value="Korean">Tiếng Hàn</option>
+                </select>
+
+                {isPro ? (
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min={5}
+                      max={100}
+                      value={targetCount}
+                      onChange={(e) => setTargetCount(Number(e.target.value))}
+                      placeholder="Số từ"
+                      title="Số lượng từ vựng"
+                      className="h-11 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg px-3 text-sm font-medium text-slate-700 dark:text-neutral-300 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm w-32 dark:text-neutral-200"
+                    />
+                  </div>
+                ) : (
+                  <div className="h-11 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 rounded-lg px-3 text-sm font-medium text-slate-400 dark:text-neutral-500 flex items-center shadow-sm w-32 cursor-not-allowed relative group dark:text-neutral-400 dark:bg-[#0a0a0a]">
+                    <span>35 từ vựng</span>
+                    <div className="absolute hidden group-hover:block bottom-full left-1/2 -translate-x-1/2 mb-2 w-max bg-neutral-900 text-white text-[10px] py-1 px-2 rounded">
+                      Lên Pro để chọn số lượng
+                    </div>
+                  </div>
+                )}
+              </div>
 
               <button
                 type="submit"
                 disabled={uploading}
-                className="h-11 px-6 bg-slate-900 text-white font-bold text-sm rounded-lg hover:bg-slate-800 transition-all shadow-sm hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2 w-full sm:w-auto shrink-0"
+                className="h-11 px-6 bg-neutral-900 text-white font-bold text-sm rounded-lg hover:bg-neutral-800 transition-all shadow-sm hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2 w-full sm:w-auto shrink-0"
               >
                 {uploading && (
                   <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>

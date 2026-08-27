@@ -19,6 +19,22 @@ export async function createMediaJob(data: {
 
   let finalTitle = data.title;
 
+  // Rate Limiting Logic
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const { count: todayCount } = await supabase
+    .from("media_assets")
+    .select("*", { count: "exact", head: true })
+    .gte("created_at", today.toISOString());
+
+  // Check if user is Pro
+  const isPro = user.user_metadata?.plan === 'pro';
+  const dailyLimit = isPro ? 15 : 2;
+
+  if (todayCount && todayCount >= dailyLimit) {
+    throw new Error(`Bạn đã hết lượt xử lý AI hôm nay (${todayCount}/${dailyLimit}). ${!isPro ? 'Hãy nâng cấp Pro để học nhiều hơn!' : ''}`);
+  }
+
   // Auto-fetch YouTube title if user didn't provide one
   if (data.type === "youtube" && data.sourceUrl && (!finalTitle || finalTitle === "YouTube Video")) {
     try {
