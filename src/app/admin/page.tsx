@@ -128,7 +128,6 @@ export default async function AdminOverviewPage() {
             </table>
           </div>
         </div>
-      </div>
     </div>
   );
 }
