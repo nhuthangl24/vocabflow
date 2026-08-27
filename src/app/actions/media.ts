@@ -18,7 +18,6 @@ export async function createMediaJob(data: {
   }
 
   let finalTitle = data.title;
-
   // Rate Limiting Logic
   const today = new Date();
   today.setHours(0, 0, 0, 0);

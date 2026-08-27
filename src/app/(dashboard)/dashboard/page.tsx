@@ -22,12 +22,18 @@ export default async function DashboardPage() {
     // Fetch recent media assets
     const { data: ma } = await supabase
       .from("media_assets")
-      .select("*, transcript_jobs(status, error_message)")
+      .select("*, transcript_jobs(status, error_message, settings)")
       .neq("status", "deleted")
       .order("created_at", { ascending: false })
-      .limit(4);
+      .limit(20);
       
-    if (ma) mediaAssets = ma;
+    if (ma) {
+      mediaAssets = ma.filter((a: any) => {
+        const jobs = a.transcript_jobs as any[];
+        if (!jobs || jobs.length === 0) return true;
+        return jobs.some((j: any) => !j.settings?.module || j.settings.module === 'vocabulary');
+      }).slice(0, 4);
+    }
 
     // Fetch total media assets count for stats
     const { count: mc } = await supabase

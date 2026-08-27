@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { createMediaJob } from "@/app/actions/media";
 import { Video, LinkIcon, Upload, Sparkles, Clipboard } from "lucide-react";
 
-export default function InlineUploadBanner({ 
+export default function ShadowingUploadBanner({ 
   userId, 
   isPro = false,
   todayCount = 0,
@@ -23,7 +23,7 @@ export default function InlineUploadBanner({
   const [activeTab, setActiveTab] = useState<'youtube' | 'upload'>('youtube');
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [targetLanguage, setTargetLanguage] = useState("English");
-  const [targetCount, setTargetCount] = useState<number | "">(35);
+  
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
 
@@ -57,7 +57,7 @@ export default function InlineUploadBanner({
           storagePath: "", 
           sizeBytes: 0,
           sourceUrl: youtubeUrl,
-          settings: { targetLanguage, targetCount: targetCount || 35, module: 'vocabulary' }
+          settings: { targetLanguage, module: 'shadowing' }
         });
       } else {
         // Fallback for upload via hidden file input (handled by standard click)
@@ -84,7 +84,7 @@ export default function InlineUploadBanner({
           type,
           storagePath: uploadData.path,
           sizeBytes: file.size,
-          settings: { targetLanguage, targetCount: targetCount || 35, module: 'vocabulary' }
+          settings: { targetLanguage, module: 'shadowing' }
         });
       }
 
@@ -108,9 +108,9 @@ export default function InlineUploadBanner({
 
         {/* Text Section */}
         <div className="z-10 max-w-2xl">
-          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight mb-2">Biến mọi video yêu thích thành bài học.</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight mb-2">Thêm video mới vào Phòng luyện.</h2>
           <p className="text-sm font-medium text-slate-500 dark:text-neutral-400">
-            Học ngoại ngữ qua bất kỳ video YouTube nào bạn muốn. Hệ thống sẽ tự động tạo phụ đề, từ vựng và bài tập.
+            Dán link YouTube vào đây để AI xử lý phụ đề và tạo bài tập chép chính tả / shadowing cho bạn.
           </p>
         </div>
 
@@ -178,28 +178,6 @@ export default function InlineUploadBanner({
                   <option value="Japanese">Tiếng Nhật</option>
                   <option value="Korean">Tiếng Hàn</option>
                 </select>
-
-                {isPro ? (
-                  <div className="relative flex-1 sm:w-32 sm:flex-none">
-                    <input
-                      type="number"
-                      min={35}
-                      max={100}
-                      value={targetCount === "" ? "" : targetCount}
-                      onChange={(e) => setTargetCount(e.target.value === "" ? "" : Number(e.target.value))}
-                      placeholder="Số từ"
-                      title="Số lượng từ vựng"
-                      className="h-11 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg px-3 text-sm font-medium text-slate-700 dark:text-neutral-300 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm w-full dark:text-neutral-200"
-                    />
-                  </div>
-                ) : (
-                  <div className="h-11 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 rounded-lg px-3 text-sm font-medium text-slate-400 dark:text-neutral-500 flex items-center justify-center sm:justify-start shadow-sm flex-1 sm:w-32 sm:flex-none cursor-not-allowed relative group dark:text-neutral-400 dark:bg-[#0a0a0a]">
-                    <span>35 từ vựng</span>
-                    <div className="absolute hidden group-hover:block bottom-full left-1/2 -translate-x-1/2 mb-2 w-max bg-neutral-900 text-white text-[10px] py-1 px-2 rounded">
-                      Lên Pro để chọn số lượng
-                    </div>
-                  </div>
-                )}
               </div>
 
               <button
@@ -210,7 +188,7 @@ export default function InlineUploadBanner({
                 {uploading && (
                   <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                 )}
-                {uploading ? "Đang xử lý..." : "Tạo bài học"}
+                {uploading ? "Đang xử lý..." : "Tạo bài luyện"}
               </button>
             </div>
             

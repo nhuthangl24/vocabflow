@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
-import ReactPlayer from "react-player";
+import { useState, useRef, useEffect } from "react";
 import { Volume2, ExternalLink } from "lucide-react";
 
 export default function VideoWorkspaceClient({ videoUrl, vocabulary, grammar = [], userId, targetLanguage = "English" }: { videoUrl: string, vocabulary: any[], grammar?: any[], userId: string, targetLanguage?: string }) {
@@ -9,6 +8,26 @@ export default function VideoWorkspaceClient({ videoUrl, vocabulary, grammar = [
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => setIsMounted(true), []);
+
+  // Suppress the annoying ReactPlayer AbortError in Next.js Dev Mode
+  useEffect(() => {
+    const originalError = console.error;
+    console.error = (...args) => {
+      if (args[0] && typeof args[0] === 'string' && args[0].includes('The play() request was interrupted')) return;
+      if (args[0] && args[0].name === 'AbortError') return;
+      originalError(...args);
+    };
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      if (event.reason && (event.reason.name === 'AbortError' || (event.reason.message && event.reason.message.includes('play()')))) {
+        event.preventDefault();
+      }
+    };
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    return () => {
+      console.error = originalError;
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, []);
   const [activeTab, setActiveTab] = useState<"vocab" | "grammar">("vocab");
   const [selectedVocab, setSelectedVocab] = useState<any | null>(null);
   const [selectedGrammar, setSelectedGrammar] = useState<any | null>(null);
@@ -79,30 +98,8 @@ export default function VideoWorkspaceClient({ videoUrl, vocabulary, grammar = [
 
   return (
     <div className="flex flex-col lg:flex-row gap-8 w-full">
-      {/* Left Column: Video Player */}
-      <div className="w-full lg:w-5/12 shrink-0">
-        <div className="sticky top-6">
-          <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-lg border border-slate-200 dark:border-neutral-800">
-            {isMounted ? (
-              <ReactPlayer
-              ref={playerRef}
-              url={videoUrl}
-              width="100%"
-              height="100%"
-              controls
-              playing={isPlaying}
-              onPlay={() => setIsPlaying(true)}
-              onPause={() => setIsPlaying(false)}
-            />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-neutral-900 text-white">Loading player...</div>
-            )}
-          </div>
-        </div>
-      </div>
 
-      {/* Right Column: Workspace Tabs */}
-      <div className="w-full lg:w-7/12">
+      <div className="w-full">
         {/* Tabs */}
         <div className="flex space-x-4 border-b border-gray-200 dark:border-neutral-700 mb-6 dark:border-neutral-700">
         <button

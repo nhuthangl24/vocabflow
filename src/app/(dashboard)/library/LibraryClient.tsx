@@ -14,6 +14,14 @@ export default function LibraryClient({ initialAssets }: { initialAssets: Asset[
 
   // Filter assets
   const filteredAssets = initialAssets.filter(asset => {
+    // Exclude shadowing videos
+    const jobs = asset.transcript_jobs as any[];
+    if (jobs && jobs.length > 0) {
+      if (!jobs.some(j => !j.settings?.module || j.settings.module === 'vocabulary')) {
+        return false;
+      }
+    }
+
     const matchesSearch = asset.title?.toLowerCase().includes(searchQuery.toLowerCase());
     const assetLang = asset.transcript_jobs?.[0]?.settings?.targetLanguage || "English";
     const matchesLang = targetLanguage === "All" || assetLang === targetLanguage;

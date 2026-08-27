@@ -20,10 +20,15 @@ export default function RecentVideosClient({ initialAssets }: { initialAssets: a
         .select("*, transcript_jobs(status, error_message)")
         .neq("status", "deleted")
         .order("created_at", { ascending: false })
-        .limit(4);
+        .limit(20);
 
       if (data) {
-        setAssets(data);
+        const filtered = data.filter((a: any) => {
+          const jobs = a.transcript_jobs as any[];
+          if (!jobs || jobs.length === 0) return true;
+          return jobs.some((j: any) => !j.settings?.module || j.settings.module === 'vocabulary');
+        }).slice(0, 4);
+        setAssets(filtered);
       }
     }, 3000);
 

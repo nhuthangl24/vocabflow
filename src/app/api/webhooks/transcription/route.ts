@@ -63,7 +63,7 @@ async function processJob(jobId: string) {
     if (assetError || !asset) throw new Error("Asset not found");
     if (!asset.source_url && asset.type === "youtube") throw new Error("Missing YouTube URL");
 
-    // Try to get existing YouTube CC first
+    let segmentsFromCC: any[] = [];
     let ccText = "";
     if (asset.type === "youtube") {
       try {
@@ -82,7 +82,12 @@ async function processJob(jobId: string) {
           // Attempt to fetch specific language
           const transcriptArr = await YoutubeTranscript.fetchTranscript(asset.source_url, { lang: langCode });
           if (transcriptArr && transcriptArr.length > 0) {
-            ccText = transcriptArr.map(t => t.text).join(" ");
+            segmentsFromCC = transcriptArr.map(t => ({
+              job_id: jobId,
+              start_time_ms: Math.floor(t.offset),
+              end_time_ms: Math.floor(t.offset + t.duration),
+              text: t.text
+            }));
           } else {
              throw new Error("Empty CC");
           }
@@ -92,7 +97,12 @@ async function processJob(jobId: string) {
             // Fallback: try fetching without any specific language (gets default)
             const fallbackArr = await YoutubeTranscript.fetchTranscript(asset.source_url);
             if (fallbackArr && fallbackArr.length > 0) {
-              ccText = fallbackArr.map(t => t.text).join(" ");
+              segmentsFromCC = fallbackArr.map(t => ({
+                job_id: jobId,
+                start_time_ms: Math.floor(t.offset),
+                end_time_ms: Math.floor(t.offset + t.duration),
+                text: t.text
+              }));
             } else {
               throw new Error("Empty default CC");
             }
@@ -106,7 +116,7 @@ async function processJob(jobId: string) {
       }
     }
 
-    const allSegments = [];
+    let allSegments: any[] = [];
 
     // If we have CC, we skip extraction and transcribing completely!
     if (ccText) {
@@ -119,7 +129,12 @@ async function processJob(jobId: string) {
       });
       await supabase.from("transcript_jobs").update({ status: "analyzing" }).eq("id", jobId);
     } else {
-      // Update status to extracting_audio
+      // If we got CCs, skip Whisper completely!
+    if (segmentsFromCC.length > 0) {
+      console.log(`Skipping Whisper, using ${segmentsFromCC.length} CC segments.`);
+      allSegments = segmentsFromCC;
+    } else {
+    // Update status to extracting_audio
       await supabase.from("transcript_jobs").update({ status: "extracting_audio" }).eq("id", jobId);
 
       // Download file from Supabase Storage or YouTube
@@ -196,6 +211,8 @@ async function processJob(jobId: string) {
       }
     }
 
+    }
+
     // Save segments to DB
     if (allSegments.length > 0) {
       await supabase.from("transcript_segments").insert(allSegments);
@@ -204,128 +221,134 @@ async function processJob(jobId: string) {
     // Update status to analyzing
     await supabase.from("transcript_jobs").update({ status: "analyzing" }).eq("id", jobId);
 
-    // Call LLM Extractor
-    const { extractVocabulary } = await import("@/lib/ai/extractor");
-    const fullTranscript = allSegments.map(s => s.text).join(" ");
+    // Check if we should skip AI extraction
+    const isShadowing = job.settings?.module === 'shadowing';
     
-    // MVP Fake Plan Logic
-    const userPlan: string = "free"; 
-    const MAX_ALLOWED = userPlan === "pro" ? 50 : 35;
-    
-    const requestedCount = job.settings?.targetCount ? Number(job.settings.targetCount) : 35;
-    const MAX_WORDS = Math.min(requestedCount, MAX_ALLOWED);
-    
-    // Calculate how many chunks we need to safely extract MAX_WORDS.
-    // Assume a safe limit of 15 words per chunk to avoid output truncation.
-    const SAFE_WORDS_PER_CHUNK = 15;
-    const minChunksForWords = Math.ceil(MAX_WORDS / SAFE_WORDS_PER_CHUNK);
-    
-    const MAX_CHARS_PER_CHUNK = 12000;
-    const minChunksForLength = Math.ceil(fullTranscript.length / MAX_CHARS_PER_CHUNK);
-    
-    const totalChunksNeeded = Math.max(minChunksForWords, minChunksForLength);
-    const actualChunkSize = Math.ceil(fullTranscript.length / totalChunksNeeded);
-
-    const transcriptChunks = [];
-    if (totalChunksNeeded <= 1) {
-      transcriptChunks.push(fullTranscript);
-    } else {
-      for (let i = 0; i < fullTranscript.length; i += actualChunkSize) {
-        transcriptChunks.push(fullTranscript.substring(i, i + actualChunkSize));
-      }
-    }
-
-    const wordsPerChunk = Math.ceil(MAX_WORDS / transcriptChunks.length);
-    const chunkSettings = { ...job.settings, targetCount: wordsPerChunk };
-
-    let allVocabItems: any[] = [];
-    
-    const batchSize = 5;
-    for (let i = 0; i < transcriptChunks.length; i += batchSize) {
-      const batch = transcriptChunks.slice(i, i + batchSize);
-      const batchPromises = batch.map(async (tChunk) => {
-        try {
-          const extraction = await extractVocabulary(tChunk, chunkSettings);
-          return extraction?.items || [];
-        } catch (e) {
-          console.error("Failed to extract vocab for a chunk", e);
-          return [];
-        }
-      });
+    if (!isShadowing) {
+          // Call LLM Extractor
+          const { extractVocabulary } = await import("@/lib/ai/extractor");
+          const fullTranscript = allSegments.map(s => s.text).join(" ");
+          
+          // MVP Fake Plan Logic
+          const userPlan: string = "free"; 
+          const MAX_ALLOWED = userPlan === "pro" ? 50 : 35;
+          
+          const requestedCount = job.settings?.targetCount ? Number(job.settings.targetCount) : 35;
+          const MAX_WORDS = Math.min(requestedCount, MAX_ALLOWED);
+          
+          // Calculate how many chunks we need to safely extract MAX_WORDS.
+          // Assume a safe limit of 15 words per chunk to avoid output truncation.
+          const SAFE_WORDS_PER_CHUNK = 15;
+          const minChunksForWords = Math.ceil(MAX_WORDS / SAFE_WORDS_PER_CHUNK);
+          
+          const MAX_CHARS_PER_CHUNK = 12000;
+          const minChunksForLength = Math.ceil(fullTranscript.length / MAX_CHARS_PER_CHUNK);
+          
+          const totalChunksNeeded = Math.max(minChunksForWords, minChunksForLength);
+          const actualChunkSize = Math.ceil(fullTranscript.length / totalChunksNeeded);
       
-      const batchResults = await Promise.all(batchPromises);
-      allVocabItems = allVocabItems.concat(batchResults.flat());
-    }
-
-    allVocabItems = allVocabItems.slice(0, MAX_WORDS);
-
-    // Prepare vocab inserts
-    const vocabInserts = allVocabItems.map(item => ({
-      job_id: jobId,
-      user_id: job.user_id,
-      term: item.term,
-      lemma: item.lemma,
-      pronunciation: item.pronunciation,
-      part_of_speech: item.partOfSpeech,
-      level: item.level,
-      meaning_vi: item.meaningVi,
-      context_meaning_vi: item.contextMeaningVi,
-      original_sentence: item.originalSentence,
-      sentence_translation_vi: item.sentenceTranslationVi,
-      usage_note_vi: item.usageNoteVi,
-      examples: item.examples,
-      collocations: item.collocations,
-      synonyms: item.synonyms,
-      antonyms: item.antonyms,
-      word_family: item.wordFamily,
-      related_words: item.relatedWords,
-      common_mistakes_vi: item.commonMistakesVi,
-      tags: item.tags,
-      confidence: item.confidence ? Number(item.confidence) : 1.0,
-      simplified: item.simplified,
-      traditional: item.traditional,
-      pinyin: item.pinyin,
-      measure_words: item.measureWords,
-      hsk_level: item.hskLevel ? Number(item.hskLevel) : null,
-      grammar_pattern: item.grammarPattern,
-    }));
-
-    if (vocabInserts.length > 0) {
-      await supabase.from("vocabulary_items").insert(vocabInserts);
-    }
-
-    // --- Extract Grammar ---
-    try {
-      const { extractGrammar } = await import("@/lib/ai/grammar_extractor");
-      // Truncate to ~60000 chars if it's too long, to ensure we don't blow up input tokens needlessly
-      // 60k chars is about 15k tokens, very safe for modern LLMs.
-      const grammarTargetText = fullTranscript.length > 60000 ? fullTranscript.substring(0, 60000) : fullTranscript;
+          const transcriptChunks = [];
+          if (totalChunksNeeded <= 1) {
+            transcriptChunks.push(fullTranscript);
+          } else {
+            for (let i = 0; i < fullTranscript.length; i += actualChunkSize) {
+              transcriptChunks.push(fullTranscript.substring(i, i + actualChunkSize));
+            }
+          }
       
-      const grammarExtraction = await extractGrammar(grammarTargetText, { ...job.settings, targetCount: 5 });
-      const grammarItems = grammarExtraction?.items || [];
+          const wordsPerChunk = Math.ceil(MAX_WORDS / transcriptChunks.length);
+          const chunkSettings = { ...job.settings, targetCount: wordsPerChunk };
       
-      const grammarInserts = grammarItems.map(item => ({
-        job_id: jobId,
-        user_id: job.user_id,
-        grammar_pattern: item.grammarPattern,
-        level: item.level,
-        meaning_vi: item.meaningVi,
-        explanation_vi: item.explanationVi,
-        original_sentence: item.originalSentence,
-        sentence_translation_vi: item.sentenceTranslationVi,
-        examples: item.examples,
-        confidence: item.confidence ? Number(item.confidence) : 1.0,
-      }));
-
-      if (grammarInserts.length > 0) {
-        await supabase.from("grammar_items").insert(grammarInserts);
-      }
-    } catch (gErr) {
-      console.error("Failed to extract grammar:", gErr);
-      // We don't fail the job if grammar fails, it's an enhancement
+          let allVocabItems: any[] = [];
+          
+          const batchSize = 5;
+          for (let i = 0; i < transcriptChunks.length; i += batchSize) {
+            const batch = transcriptChunks.slice(i, i + batchSize);
+            const batchPromises = batch.map(async (tChunk) => {
+              try {
+                const extraction = await extractVocabulary(tChunk, chunkSettings);
+                return extraction?.items || [];
+              } catch (e) {
+                console.error("Failed to extract vocab for a chunk", e);
+                return [];
+              }
+            });
+            
+            const batchResults = await Promise.all(batchPromises);
+            allVocabItems = allVocabItems.concat(batchResults.flat());
+          }
+      
+          allVocabItems = allVocabItems.slice(0, MAX_WORDS);
+      
+          // Prepare vocab inserts
+          const vocabInserts = allVocabItems.map(item => ({
+            job_id: jobId,
+            user_id: job.user_id,
+            term: item.term,
+            lemma: item.lemma,
+            pronunciation: item.pronunciation,
+            part_of_speech: item.partOfSpeech,
+            level: item.level,
+            meaning_vi: item.meaningVi,
+            context_meaning_vi: item.contextMeaningVi,
+            original_sentence: item.originalSentence,
+            sentence_translation_vi: item.sentenceTranslationVi,
+            usage_note_vi: item.usageNoteVi,
+            examples: item.examples,
+            collocations: item.collocations,
+            synonyms: item.synonyms,
+            antonyms: item.antonyms,
+            word_family: item.wordFamily,
+            related_words: item.relatedWords,
+            common_mistakes_vi: item.commonMistakesVi,
+            tags: item.tags,
+            confidence: item.confidence ? Number(item.confidence) : 1.0,
+            simplified: item.simplified,
+            traditional: item.traditional,
+            pinyin: item.pinyin,
+            measure_words: item.measureWords,
+            hsk_level: item.hskLevel ? Number(item.hskLevel) : null,
+            grammar_pattern: item.grammarPattern,
+          }));
+      
+          if (vocabInserts.length > 0) {
+            await supabase.from("vocabulary_items").insert(vocabInserts);
+          }
+      
+          // --- Extract Grammar ---
+          try {
+            const { extractGrammar } = await import("@/lib/ai/grammar_extractor");
+            // Truncate to ~60000 chars if it's too long, to ensure we don't blow up input tokens needlessly
+            // 60k chars is about 15k tokens, very safe for modern LLMs.
+            const grammarTargetText = fullTranscript.length > 60000 ? fullTranscript.substring(0, 60000) : fullTranscript;
+            
+            const grammarExtraction = await extractGrammar(grammarTargetText, { ...job.settings, targetCount: 5 });
+            const grammarItems = grammarExtraction?.items || [];
+            
+            const grammarInserts = grammarItems.map(item => ({
+              job_id: jobId,
+              user_id: job.user_id,
+              grammar_pattern: item.grammarPattern,
+              level: item.level,
+              meaning_vi: item.meaningVi,
+              explanation_vi: item.explanationVi,
+              original_sentence: item.originalSentence,
+              sentence_translation_vi: item.sentenceTranslationVi,
+              examples: item.examples,
+              confidence: item.confidence ? Number(item.confidence) : 1.0,
+            }));
+      
+            if (grammarInserts.length > 0) {
+              await supabase.from("grammar_items").insert(grammarInserts);
+            }
+          } catch (gErr) {
+            console.error("Failed to extract grammar:", gErr);
+            // We don't fail the job if grammar fails, it's an enhancement
+          }
+      
+          // Mark as completed
+      
     }
-
-    // Mark as completed
     await supabase.from("transcript_jobs").update({ status: "completed" }).eq("id", jobId);
     await supabase.from("media_assets").update({ status: "ready" }).eq("id", asset.id);
 
