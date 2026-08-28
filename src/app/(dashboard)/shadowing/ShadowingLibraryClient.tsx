@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Headphones, Play, Calendar, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -16,13 +16,32 @@ export default function ShadowingLibraryClient({ initialAssets }: { initialAsset
     e.preventDefault();
     e.stopPropagation();
     
-    if (confirmId === assetId) {
+    if (window.confirm("Bạn có chắc chắn muốn xóa video này khỏi kho Shadowing không?")) {
       doDelete(assetId);
-    } else {
-      setConfirmId(assetId);
-      setTimeout(() => setConfirmId(prev => prev === assetId ? null : prev), 3000);
     }
   };
+
+  useEffect(() => {
+    const processingAssets = assets.filter(a => a.status !== 'ready' && a.status !== 'failed');
+    if (processingAssets.length === 0) return;
+
+    const interval = setInterval(async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("media_assets")
+        .select("*")
+        .in("id", processingAssets.map(a => a.id));
+      
+      if (data && data.length > 0) {
+        setAssets(prev => prev.map(p => {
+          const updated = data.find(d => d.id === p.id);
+          return updated ? updated : p;
+        }));
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [assets]);
 
   const doDelete = async (assetId: string) => {
     setConfirmId(null);

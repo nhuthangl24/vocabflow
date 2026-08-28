@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export const alt = 'Lumina - Học từ vựng qua Video';
 export const size = {
   width: 1200,

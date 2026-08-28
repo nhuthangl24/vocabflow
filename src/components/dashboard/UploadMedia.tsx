@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { createMediaJob } from "@/app/actions/media";
-import { Video, Link as LinkIcon, UploadCloud, X } from "lucide-react";
+import { fetchYouTubeCaptions } from "@/app/actions/youtube";
+import { Video, Link as LinkIcon, UploadCloud, X, AlertTriangle } from "lucide-react";
 
-export default function UploadMedia({ userId, isPro = false }: { userId: string, isPro?: boolean }) {
+export default function UploadMedia({ userId, isPro = false, todayCount = 0, dailyLimit = 10 }: { userId: string, isPro?: boolean, todayCount?: number, dailyLimit?: number }) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"upload" | "youtube">("youtube");
   
@@ -17,11 +18,65 @@ export default function UploadMedia({ userId, isPro = false }: { userId: string,
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  const [isFetchingCaptions, setIsFetchingCaptions] = useState(false);
+  const [availableCaptions, setAvailableCaptions] = useState<{name: string, languageCode: string}[] | null>(null);
+  const [hasManualCaptions, setHasManualCaptions] = useState<boolean | null>(null);
+  const [acceptWarning, setAcceptWarning] = useState(false);
+
+  const limitReached = todayCount >= dailyLimit;
+
+  useEffect(() => {
+    let isMounted = true;
+    const url = youtubeUrl.trim();
+    
+    if (activeTab === 'youtube' && url.length > 10) {
+      const videoIdMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+      if (videoIdMatch) {
+        setIsFetchingCaptions(true);
+        setAvailableCaptions(null);
+        setHasManualCaptions(null);
+        setAcceptWarning(false);
+        
+        fetchYouTubeCaptions(url).then(res => {
+          if (!isMounted) return;
+          setIsFetchingCaptions(false);
+          if (res.success) {
+            setHasManualCaptions(res.hasManualCaptions);
+            setAvailableCaptions(res.tracks || []);
+            if (res.tracks && res.tracks.length > 0) {
+              setTargetLanguage(res.tracks[0].name);
+            }
+          }
+        }).catch(() => {
+          if (isMounted) setIsFetchingCaptions(false);
+        });
+      } else {
+        setAvailableCaptions(null);
+        setHasManualCaptions(null);
+      }
+    } else {
+      setAvailableCaptions(null);
+      setHasManualCaptions(null);
+    }
+    
+    return () => { isMounted = false; };
+  }, [youtubeUrl, activeTab]);
+  
   const router = useRouter();
   const supabase = createClient();
 
   const handleProcess = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (limitReached) {
+      setError(`Bạn đã hết lượt tạo AI hôm nay (${todayCount}/${dailyLimit}). ${!isPro ? 'Hãy nâng cấp Pro để tiếp tục!' : ''}`);
+      return;
+    }
+    
+    if (activeTab === 'youtube' && hasManualCaptions === false && !acceptWarning) {
+      setError("Vui lòng xác nhận đồng ý tiếp tục dù video không có phụ đề chuẩn.");
+      return;
+    }
+
     setUploading(true);
     setError(null);
 
@@ -51,12 +106,10 @@ export default function UploadMedia({ userId, isPro = false }: { userId: string,
         });
 
       } else {
-        // YouTube Logic
         if (!youtubeUrl.includes("youtube.com") && !youtubeUrl.includes("youtu.be")) {
           throw new Error("Link YouTube không hợp lệ.");
         }
         
-        // Placeholder for YouTube processing. In a real app, backend uses ytdl-core to download audio.
         await createMediaJob({
           title: "YouTube Video",
           type: "youtube",
@@ -100,7 +153,6 @@ export default function UploadMedia({ userId, isPro = false }: { userId: string,
             </div>
             
             <div className="p-6">
-              {/* Tabs */}
               <div className="flex p-1 mb-6 bg-gray-100 rounded-lg dark:bg-neutral-900">
                 <button
                   className={`flex-1 flex justify-center items-center gap-2 py-2 text-sm font-medium rounded-md transition-all ${activeTab === 'youtube' ? 'bg-white text-blue-700 shadow' : 'text-gray-600 hover:text-gray-900'} dark:bg-[#0a0a0a]`}
@@ -122,7 +174,6 @@ export default function UploadMedia({ userId, isPro = false }: { userId: string,
                     {error}
                   </div>
                 )}
-
 
                 {activeTab === 'youtube' ? (
                   <div>
@@ -163,15 +214,26 @@ export default function UploadMedia({ userId, isPro = false }: { userId: string,
                   <div className="flex-1">
                     <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-neutral-200">Ngôn ngữ muốn học</label>
                     <select
-                      className="block w-full rounded-lg border-gray-300 bg-gray-50 p-3 text-sm text-gray-900 border focus:border-blue-500 focus:ring-blue-500 outline-none dark:bg-[#0a0a0a] dark:border-neutral-600"
+                      className="block w-full rounded-lg border-gray-300 bg-gray-50 p-3 text-sm text-gray-900 border focus:border-blue-500 focus:ring-blue-500 outline-none dark:bg-[#0a0a0a] dark:border-neutral-600 disabled:opacity-50"
                       value={targetLanguage}
                       onChange={(e) => setTargetLanguage(e.target.value)}
+                      disabled={isFetchingCaptions}
                     >
-                      <option value="English">Tiếng Anh</option>
-                      <option value="Chinese">Tiếng Trung</option>
-                      <option value="Japanese">Tiếng Nhật</option>
-                      <option value="Korean">Tiếng Hàn</option>
-                      <option value="French">Tiếng Pháp</option>
+                      {isFetchingCaptions ? (
+                        <option>Đang tìm CC...</option>
+                      ) : availableCaptions && availableCaptions.length > 0 ? (
+                        availableCaptions.map((cap, idx) => (
+                          <option key={idx} value={cap.name}>{cap.name}</option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="English">Tiếng Anh</option>
+                          <option value="Chinese">Tiếng Trung</option>
+                          <option value="Japanese">Tiếng Nhật</option>
+                          <option value="Korean">Tiếng Hàn</option>
+                          <option value="French">Tiếng Pháp</option>
+                        </>
+                      )}
                     </select>
                   </div>
 
@@ -200,22 +262,46 @@ export default function UploadMedia({ userId, isPro = false }: { userId: string,
                   </div>
                 </div>
 
-                <div className="pt-4 flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsOpen(false)}
-                    className="rounded-lg px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors dark:text-neutral-200 dark:bg-neutral-900"
-                    disabled={uploading}
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    type="submit"
-                    className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
-                    disabled={uploading || (activeTab === 'upload' && !file) || (activeTab === 'youtube' && !youtubeUrl)}
-                  >
-                    {uploading ? "Đang xử lý..." : "Tiếp tục"}
-                  </button>
+                <div className="pt-4 flex flex-col gap-3">
+                  {activeTab === 'youtube' && hasManualCaptions === false && !isFetchingCaptions && (
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-lg p-3 flex gap-3">
+                      <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                      <div className="flex flex-col gap-1.5">
+                        <p className="text-sm text-amber-800 dark:text-amber-300 font-medium leading-snug">
+                          Video này không có phụ đề chuẩn do con người tạo (CC). Hệ thống sẽ sử dụng AI để tự tạo phụ đề nên độ chính xác có thể không cao.
+                        </p>
+                        <label className="flex items-start gap-2 cursor-pointer group mt-1">
+                          <input 
+                            type="checkbox" 
+                            checked={acceptWarning}
+                            onChange={(e) => setAcceptWarning(e.target.checked)}
+                            className="mt-0.5 rounded border-amber-300 text-amber-600 focus:ring-amber-500 cursor-pointer bg-white"
+                          />
+                          <span className="text-sm font-bold text-amber-900 dark:text-amber-400 group-hover:text-amber-700 transition-colors">
+                            Tôi đồng ý tiếp tục dù độ chính xác có thể thấp
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-3 w-full">
+                    <button
+                      type="button"
+                      onClick={() => setIsOpen(false)}
+                      className="rounded-lg px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors dark:text-neutral-200 dark:bg-neutral-900"
+                      disabled={uploading}
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={uploading || isFetchingCaptions || (activeTab === 'youtube' && hasManualCaptions === false && !acceptWarning)}
+                      className="flex-1 rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {uploading ? "Đang xử lý..." : "Tiếp tục"}
+                    </button>
+                  </div>
                 </div>
               </form>
             </div>

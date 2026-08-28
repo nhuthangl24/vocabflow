@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { createMediaJob } from "@/app/actions/media";
-import { Video, LinkIcon, Upload, Sparkles, Clipboard } from "lucide-react";
+import { fetchYouTubeCaptions } from "@/app/actions/youtube";
+import { Video, LinkIcon, Upload, Sparkles, Clipboard, AlertTriangle } from "lucide-react";
 
 export default function InlineUploadBanner({ 
   userId, 
@@ -26,8 +27,53 @@ export default function InlineUploadBanner({
   const [targetCount, setTargetCount] = useState<number | "">(35);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  
+  // Caption state
+  const [isFetchingCaptions, setIsFetchingCaptions] = useState(false);
+  const [availableCaptions, setAvailableCaptions] = useState<{name: string, languageCode: string}[] | null>(null);
+  const [hasManualCaptions, setHasManualCaptions] = useState<boolean | null>(null);
+  const [acceptWarning, setAcceptWarning] = useState(false);
 
   const limitReached = todayCount >= dailyLimit;
+
+  // Auto-fetch captions when URL changes
+  useEffect(() => {
+    let isMounted = true;
+    const url = youtubeUrl.trim();
+    
+    if (activeTab === 'youtube' && url.length > 10) {
+      const videoIdMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+      if (videoIdMatch) {
+        setIsFetchingCaptions(true);
+        setAvailableCaptions(null);
+        setHasManualCaptions(null);
+        setAcceptWarning(false);
+        
+        fetchYouTubeCaptions(url).then(res => {
+          if (!isMounted) return;
+          setIsFetchingCaptions(false);
+          if (res.success) {
+            setHasManualCaptions(res.hasManualCaptions);
+            setAvailableCaptions(res.tracks || []);
+            // Auto-select the first available language if it exists
+            if (res.tracks && res.tracks.length > 0) {
+              setTargetLanguage(res.tracks[0].name);
+            }
+          }
+        }).catch(() => {
+          if (isMounted) setIsFetchingCaptions(false);
+        });
+      } else {
+        setAvailableCaptions(null);
+        setHasManualCaptions(null);
+      }
+    } else {
+      setAvailableCaptions(null);
+      setHasManualCaptions(null);
+    }
+    
+    return () => { isMounted = false; };
+  }, [youtubeUrl, activeTab]);
 
   const handleProcess = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,6 +86,11 @@ export default function InlineUploadBanner({
 
     if (limitReached) {
       setError(`Bạn đã hết lượt tạo AI hôm nay (${todayCount}/${dailyLimit}). ${!isPro ? 'Hãy nâng cấp Pro để tiếp tục!' : ''}`);
+      return;
+    }
+    
+    if (activeTab === 'youtube' && hasManualCaptions === false && !acceptWarning) {
+      setError("Vui lòng xác nhận đồng ý tiếp tục dù video không có phụ đề chuẩn.");
       return;
     }
 
@@ -171,12 +222,23 @@ export default function InlineUploadBanner({
                 <select
                   value={targetLanguage}
                   onChange={(e) => setTargetLanguage(e.target.value)}
-                  className="h-11 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg px-3 text-sm font-medium text-slate-700 dark:text-neutral-300 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm flex-1 sm:w-32 sm:flex-none dark:text-neutral-200"
+                  disabled={isFetchingCaptions}
+                  className="h-11 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg px-3 text-sm font-medium text-slate-700 dark:text-neutral-300 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm flex-1 sm:w-32 sm:flex-none dark:text-neutral-200 disabled:opacity-50"
                 >
-                  <option value="English">Tiếng Anh</option>
-                  <option value="Chinese">Tiếng Trung</option>
-                  <option value="Japanese">Tiếng Nhật</option>
-                  <option value="Korean">Tiếng Hàn</option>
+                  {isFetchingCaptions ? (
+                    <option>Đang tìm CC...</option>
+                  ) : availableCaptions && availableCaptions.length > 0 ? (
+                    availableCaptions.map((cap, idx) => (
+                      <option key={idx} value={cap.name}>{cap.name}</option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="English">Tiếng Anh</option>
+                      <option value="Chinese">Tiếng Trung</option>
+                      <option value="Japanese">Tiếng Nhật</option>
+                      <option value="Korean">Tiếng Hàn</option>
+                    </>
+                  )}
                 </select>
 
                 {isPro ? (
@@ -204,7 +266,7 @@ export default function InlineUploadBanner({
 
               <button
                 type="submit"
-                disabled={uploading}
+                disabled={uploading || isFetchingCaptions || (hasManualCaptions === false && !acceptWarning)}
                 className="h-11 px-6 bg-neutral-900 text-white font-bold text-sm rounded-lg hover:bg-neutral-800 transition-all shadow-sm hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2 w-full sm:w-auto shrink-0"
               >
                 {uploading && (
@@ -213,6 +275,29 @@ export default function InlineUploadBanner({
                 {uploading ? "Đang xử lý..." : "Tạo bài học"}
               </button>
             </div>
+            
+            {/* Missing CC Warning */}
+            {activeTab === 'youtube' && hasManualCaptions === false && !isFetchingCaptions && (
+              <div className="mt-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-lg p-3 flex gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                <div className="flex flex-col gap-1.5">
+                  <p className="text-sm text-amber-800 dark:text-amber-300 font-medium leading-snug">
+                    Video này không có phụ đề chuẩn do con người tạo (CC). Hệ thống sẽ sử dụng AI để tự tạo phụ đề nên độ chính xác có thể không cao.
+                  </p>
+                  <label className="flex items-start gap-2 cursor-pointer group mt-1">
+                    <input 
+                      type="checkbox" 
+                      checked={acceptWarning}
+                      onChange={(e) => setAcceptWarning(e.target.checked)}
+                      className="mt-0.5 rounded border-amber-300 text-amber-600 focus:ring-amber-500 cursor-pointer bg-white"
+                    />
+                    <span className="text-sm font-bold text-amber-900 dark:text-amber-400 group-hover:text-amber-700 transition-colors">
+                      Tôi đồng ý tiếp tục dù độ chính xác có thể thấp
+                    </span>
+                  </label>
+                </div>
+              </div>
+            )}
             
             {error && (
               <p className="text-xs font-medium text-rose-500 mt-1 px-1">{error}</p>

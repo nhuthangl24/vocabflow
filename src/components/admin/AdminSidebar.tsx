@@ -11,6 +11,7 @@ export default function AdminSidebar() {
     { name: "Overview", path: "/admin", icon: LayoutDashboard },
     { name: "Users", path: "/admin/users", icon: Users },
     { name: "Media & Jobs", path: "/admin/media", icon: Clapperboard },
+    { name: "Kho Video Chung", path: "/admin/library", icon: Clapperboard },
     { name: "Plans", path: "/admin/plans", icon: CreditCard },
   ];
 

@@ -2,22 +2,36 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Search, Filter, PlayCircle, MoreVertical, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Filter, PlayCircle, MoreVertical, ChevronLeft, ChevronRight, Layers, Video } from "lucide-react";
 
-type Asset = any; // We can use 'any' for now since the schema is complex, or define it properly
+type Asset = any;
+type Playlist = any;
 
-export default function LibraryClient({ initialAssets }: { initialAssets: Asset[] }) {
+export default function LibraryClient({ 
+  initialAssets, 
+  publicAssets = [], 
+  playlists = [],
+  hideTabs = false
+}: { 
+  initialAssets: Asset[],
+  publicAssets?: Asset[],
+  playlists?: Playlist[],
+  hideTabs?: boolean
+}) {
+  const [activeTab, setActiveTab] = useState<"public" | "private">("public");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [targetLanguage, setTargetLanguage] = useState("All");
   const itemsPerPage = 8;
 
-  // Filter assets
-  const filteredAssets = initialAssets.filter(asset => {
+  // Filter assets based on active tab or if tabs are hidden (treat as private for standard filtering)
+  const baseAssets = (activeTab === "private" || hideTabs) ? initialAssets : publicAssets.filter((a: any) => !a.playlist_id);
+  
+  const filteredAssets = baseAssets.filter((asset: any) => {
     // Exclude shadowing videos
     const jobs = asset.transcript_jobs as any[];
     if (jobs && jobs.length > 0) {
-      if (!jobs.some(j => !j.settings?.module || j.settings.module === 'vocabulary')) {
+      if (!jobs.some((j: any) => !j.settings?.module || j.settings.module === 'vocabulary')) {
         return false;
       }
     }
@@ -28,10 +42,17 @@ export default function LibraryClient({ initialAssets }: { initialAssets: Asset[
     return matchesSearch && matchesLang;
   });
 
-  // Pagination
-  const totalPages = Math.ceil(filteredAssets.length / itemsPerPage);
+  const filteredPlaylists = activeTab === "public" ? playlists.filter((p: any) => p.title.toLowerCase().includes(searchQuery.toLowerCase())) : [];
+  
+  const totalItems = filteredPlaylists.length + filteredAssets.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  
+  // Combine for pagination
+  const allFilteredItems = [...filteredPlaylists.map(p => ({...p, isPlaylist: true})), ...filteredAssets];
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentAssets = filteredAssets.slice(startIndex, startIndex + itemsPerPage);
+  const currentItems = allFilteredItems.slice(startIndex, startIndex + itemsPerPage);
+
+
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -47,6 +68,26 @@ export default function LibraryClient({ initialAssets }: { initialAssets: Asset[
 
   return (
     <div className="bg-slate-100/50 dark:bg-[#0a0a0a]/50 rounded-xl border border-slate-200/60 dark:border-neutral-800 shadow-sm flex flex-col flex-1 min-h-0 overflow-hidden">
+      {/* Tabs Row */}
+      {!hideTabs && (
+        <div className="flex px-4 pt-4 shrink-0 bg-slate-50/50 dark:bg-[#0a0a0a]/50">
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setActiveTab("public"); setCurrentPage(1); }}
+              className={`px-4 py-2 text-sm font-bold rounded-lg transition-colors ${activeTab === "public" ? "bg-indigo-600 text-white shadow-sm" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 dark:bg-neutral-900 dark:border-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-800"}`}
+            >
+              Kho Video
+            </button>
+            <button
+              onClick={() => { setActiveTab("private"); setCurrentPage(1); }}
+              className={`px-4 py-2 text-sm font-bold rounded-lg transition-colors ${activeTab === "private" ? "bg-indigo-600 text-white shadow-sm" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 dark:bg-neutral-900 dark:border-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-800"}`}
+            >
+              Video Của Bạn
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="h-14 border-b border-slate-100 dark:border-neutral-800 flex items-center justify-between px-4 shrink-0 bg-slate-50/50 dark:bg-[#0a0a0a]/50">
         <div className="flex items-center gap-2 w-full max-w-md">
@@ -79,23 +120,48 @@ export default function LibraryClient({ initialAssets }: { initialAssets: Asset[
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto flex flex-col">
-        {!initialAssets || initialAssets.length === 0 ? (
+        {totalItems === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-8 flex-1">
             <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4 border border-slate-200 shadow-sm dark:bg-neutral-900 dark:border-neutral-700">
               <PlayCircle className="w-8 h-8 text-slate-300" />
             </div>
             <h3 className="text-base font-bold text-slate-900 mb-1 dark:text-white">Thư viện trống</h3>
-            <p className="text-sm text-slate-500 max-w-sm mb-6 dark:text-neutral-400">Tải lên video hoặc dán link YouTube để bắt đầu trích xuất từ vựng và học ngoại ngữ.</p>
-          </div>
-        ) : filteredAssets.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center p-8 flex-1">
-            <h3 className="text-base font-bold text-slate-900 mb-1 dark:text-white">Không tìm thấy video</h3>
-            <p className="text-sm text-slate-500 dark:text-neutral-400">Thử thay đổi từ khóa tìm kiếm của bạn.</p>
+            <p className="text-sm text-slate-500 max-w-sm mb-6 dark:text-neutral-400">Không tìm thấy video hay playlist nào.</p>
           </div>
         ) : (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4 sm:p-6">
-              {currentAssets.map((asset) => {
+              {currentItems.map((item) => {
+                if (item.isPlaylist) {
+                  // Count videos by checking publicAssets if we had them linked, but currently we might not have the count 
+                  // unless we query it. We'll mock the count or derive it.
+                  const count = publicAssets.filter((a: any) => a.playlist_id === item.id).length;
+                  return (
+                    <Link href={`/library/playlist/${item.id}`} key={`pl-${item.id}`} className="group bg-white dark:bg-neutral-900 rounded-xl border border-slate-200 dark:border-neutral-700 overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col">
+                      <div className="aspect-video bg-slate-100 dark:bg-neutral-900 relative overflow-hidden border-b border-slate-100 dark:border-neutral-800">
+                        {item.thumbnail_url ? (
+                          <img src={item.thumbnail_url} alt="Playlist" className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-300" />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-indigo-900 to-slate-900 opacity-90 group-hover:scale-105 transition-transform duration-300" />
+                        )}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm border border-white/20 flex items-center justify-center">
+                            <Layers className="w-6 h-6 text-white" />
+                          </div>
+                        </div>
+                        <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                          {count} VIDEO
+                        </div>
+                      </div>
+                      <div className="p-4 flex-1 flex flex-col">
+                        <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 line-clamp-2 mb-2 flex-1">{item.title}</h3>
+                        <p className="text-xs text-slate-500 font-medium">Playlist</p>
+                      </div>
+                    </Link>
+                  )
+                }
+
+                const asset = item;
                 const jobStatus = asset.transcript_jobs?.[0]?.status;
                 const isProcessing = asset.status !== 'ready' && asset.status !== 'failed';
 
@@ -178,7 +244,7 @@ export default function LibraryClient({ initialAssets }: { initialAssets: Asset[
             {totalPages > 1 && (
               <div className="flex items-center justify-between border-t border-slate-200 dark:border-neutral-800 px-4 sm:px-6 py-4 mt-auto bg-slate-50/50 dark:bg-[#0a0a0a]/50 dark:border-neutral-700">
                 <div className="text-sm text-slate-500 font-medium dark:text-neutral-400">
-                  Hiển thị <span className="font-bold text-slate-900 dark:text-slate-100">{startIndex + 1}</span> đến <span className="font-bold text-slate-900 dark:text-slate-100">{Math.min(startIndex + itemsPerPage, filteredAssets.length)}</span> trong số <span className="font-bold text-slate-900 dark:text-slate-100">{filteredAssets.length}</span> video
+                  Hiển thị <span className="font-bold text-slate-900 dark:text-slate-100">{startIndex + 1}</span> đến <span className="font-bold text-slate-900 dark:text-slate-100">{Math.min(startIndex + itemsPerPage, totalItems)}</span> trong số <span className="font-bold text-slate-900 dark:text-slate-100">{totalItems}</span> mục
                 </div>
                 <div className="flex items-center gap-2">
                   <button
