@@ -22,8 +22,29 @@ export default async function ShadowingLibraryPage() {
     .neq('status', 'deleted')
     .order('created_at', { ascending: false });
 
-  // Filter for shadowing module
+  // Filter for shadowing module for private assets
   const assets = rawAssets?.filter(a => {
+    const jobs = a.transcript_jobs as any[];
+    if (!jobs || jobs.length === 0) return false;
+    return jobs.some(j => j.settings?.module === 'shadowing');
+  }) || [];
+
+  // Fetch Public Playlists
+  const { data: playlists } = await supabase
+    .from("playlists")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  // Fetch Public Media Assets
+  const { data: rawPublicAssets } = await supabase
+    .from("media_assets")
+    .select("*, transcript_jobs(settings)")
+    .neq("status", "deleted")
+    .eq("is_public", true)
+    .order("created_at", { ascending: false });
+    
+  // Filter for shadowing module for public assets
+  const publicAssets = rawPublicAssets?.filter(a => {
     const jobs = a.transcript_jobs as any[];
     if (!jobs || jobs.length === 0) return false;
     return jobs.some(j => j.settings?.module === 'shadowing');
@@ -59,7 +80,11 @@ export default async function ShadowingLibraryPage() {
       <ShadowingUploadBanner userId={user.id} isPro={isPro} todayCount={todayCount} dailyLimit={dailyLimit} />
 
       <div className="mt-8">
-        <ShadowingLibraryClient initialAssets={assets} />
+        <ShadowingLibraryClient 
+          initialAssets={assets} 
+          publicAssets={publicAssets} 
+          playlists={playlists || []} 
+        />
       </div>
     </div>
   );
