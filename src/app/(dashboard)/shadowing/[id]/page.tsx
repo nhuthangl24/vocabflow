@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Headphones, PlayCircle } from "lucide-react";
@@ -22,7 +23,12 @@ export default async function ShadowingPage({ params }: { params: { id: string }
     .eq("id", id)
     .single();
 
-  if (assetError || !asset || asset.user_id !== user.id) {
+  if (assetError || !asset) {
+    redirect("/shadowing");
+  }
+
+  // Check permissions: Must be owner OR the asset must be public
+  if (asset.user_id !== user.id && !asset.is_public) {
     redirect("/shadowing");
   }
 
@@ -35,8 +41,9 @@ export default async function ShadowingPage({ params }: { params: { id: string }
     if (signedUrlData) videoUrl = signedUrlData.signedUrl;
   }
 
-  // Fetch job
-  const { data: job } = await supabase
+  // Fetch job using admin client to bypass RLS for public videos not owned by the user
+  const adminClient = createAdminClient();
+  const { data: job } = await adminClient
     .from("transcript_jobs")
     .select("id, status")
     .eq("media_asset_id", asset.id)
@@ -45,7 +52,7 @@ export default async function ShadowingPage({ params }: { params: { id: string }
   // Fetch transcript segments
   let transcript = [];
   if (job && job.id) {
-    const { data: segments } = await supabase
+    const { data: segments } = await adminClient
       .from("transcript_segments")
       .select("*")
       .eq("job_id", job.id)
@@ -70,6 +77,7 @@ export default async function ShadowingPage({ params }: { params: { id: string }
       </div>
       
       <ShadowingWorkspaceClient 
+        assetId={asset.id}
         videoUrl={videoUrl} 
         transcript={transcript}
       />

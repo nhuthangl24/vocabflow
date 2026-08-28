@@ -1,5 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { Users, Clapperboard, FileText, AlertCircle, Zap, TrendingUp, Activity, LayoutDashboard } from "lucide-react";
+import { Users, Clapperboard, FileText, AlertCircle, Zap, TrendingUp, Activity, LayoutDashboard, Database } from "lucide-react";
+import RetryJobButton from "./RetryJobButton";
+import RetryPlaylistButton from "./RetryPlaylistButton";
 
 export const revalidate = 0; // Disable cache for admin
 
@@ -38,6 +40,29 @@ export default async function AdminOverviewPage() {
     .select("*, media_assets(*)")
     .order("created_at", { ascending: false })
     .limit(5);
+
+  // Group stuck jobs by playlist
+  const { data: stuckJobsRaw } = await supabase
+    .from("transcript_jobs")
+    .select("id, status, media_assets(playlist_id)")
+    .in("status", ["failed", "queued", "processing", "extracting_audio", "transcribing", "analyzing"]);
+
+  const { data: allPlaylists } = await supabase.from("playlists").select("id, title");
+  const playlistMap = new Map(allPlaylists?.map((p: any) => [p.id, p.title]) || []);
+
+  const stuckJobsByPlaylist: Record<string, { title: string, jobIds: string[] }> = {};
+  if (stuckJobsRaw) {
+    for (const job of stuckJobsRaw) {
+      const playlistId = (job.media_assets as any)?.playlist_id;
+      const key = playlistId || "standalone";
+      const title = playlistId ? (playlistMap.get(playlistId) || "Unknown Playlist") : "Video Lẻ (Không có Playlist)";
+      
+      if (!stuckJobsByPlaylist[key]) {
+        stuckJobsByPlaylist[key] = { title, jobIds: [] };
+      }
+      stuckJobsByPlaylist[key].jobIds.push(job.id);
+    }
+  }
 
   const tJobs = totalJobsCount || 0;
   const fJobs = failedJobsCount || 0;
@@ -86,6 +111,22 @@ export default async function AdminOverviewPage() {
         })}
       </div>
 
+      {Object.keys(stuckJobsByPlaylist).length > 0 && (
+        <div className="bg-white dark:bg-neutral-900/40 dark:backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-xl dark:shadow-2xl p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Database className="w-5 h-5 text-indigo-500" />
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Khôi Phục Tiến Trình (Theo Playlist)</h2>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-neutral-400 mb-5">Danh sách các playlist có video đang bị kẹt hoặc báo lỗi. Bấm "Khôi phục" để gửi lại toàn bộ webhook cho các video này.</p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {Object.entries(stuckJobsByPlaylist).map(([key, group]) => (
+              <RetryPlaylistButton key={key} playlistName={group.title} jobIds={group.jobIds} />
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="bg-white dark:bg-neutral-900/40 dark:backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-xl dark:shadow-2xl flex-1 relative">
         <div className="px-6 py-5 border-b border-slate-200 dark:border-white/10">
           <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Recent Processing Jobs</h2>
@@ -98,6 +139,7 @@ export default async function AdminOverviewPage() {
                   <th className="px-6 py-4 border-b border-slate-200 dark:border-white/10">Media Type</th>
                   <th className="px-6 py-4 border-b border-slate-200 dark:border-white/10">Status</th>
                   <th className="px-6 py-4 border-b border-slate-200 dark:border-white/10">Time</th>
+                  <th className="px-6 py-4 border-b border-slate-200 dark:border-white/10 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-white/5">
@@ -118,6 +160,11 @@ export default async function AdminOverviewPage() {
                     </td>
                     <td className="px-6 py-4 text-slate-500 dark:text-neutral-400 font-medium text-xs">
                       {new Date(job.created_at).toLocaleString("en-GB")}
+                    </td>
+                    <td className="px-6 py-4 flex justify-end">
+                      {job.status !== "ready" && job.status !== "completed" && (
+                        <RetryJobButton jobId={job.id} />
+                      )}
                     </td>
                   </tr>
                 ))}

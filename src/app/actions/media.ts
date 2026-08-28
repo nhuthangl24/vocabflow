@@ -127,17 +127,8 @@ export async function createMediaJob(data: {
 
   if (jobError) throw jobError;
 
-  // Ideally, trigger the background job processor here via webhook or just let cron pick it up.
-  // For MVP, we can make an async fetch call to a route handler that starts processing in background.
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  fetch(`${appUrl}/api/webhooks/transcription`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
-    },
-    body: JSON.stringify({ jobId: job.id }),
-  }).catch(e => console.error("Failed to trigger job processor", e));
+  // Do NOT trigger webhook here because Next.js will abort the fetch when the action returns.
+  // Instead, the client component will call the webhook directly using the returned job id.
 
   return { asset, job };
 }

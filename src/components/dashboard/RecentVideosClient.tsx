@@ -5,7 +5,7 @@ import { PlayCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 
-export default function RecentVideosClient({ initialAssets }: { initialAssets: any[] }) {
+export default function RecentVideosClient({ initialAssets, userId }: { initialAssets: any[], userId?: string }) {
   const [assets, setAssets] = useState(initialAssets);
   const supabase = createClient();
 
@@ -15,13 +15,21 @@ export default function RecentVideosClient({ initialAssets }: { initialAssets: a
   useEffect(() => {
     // Poll every 3 seconds to get the latest status (vocabulary only)
     const interval = setInterval(async () => {
-      const { data } = await supabase
+      let query = supabase
         .from("media_assets")
         .select("*, transcript_jobs(status, error_message)")
         .neq("status", "deleted")
         .eq("module", "vocabulary")
         .order("created_at", { ascending: false })
         .limit(4);
+
+      if (userId) {
+        query = query
+          .eq("user_id", userId)
+          .or("is_public.is.null,is_public.eq.false");
+      }
+
+      const { data } = await query;
 
       if (data) {
         setAssets(data);

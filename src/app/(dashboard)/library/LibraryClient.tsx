@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Search, Filter, PlayCircle, MoreVertical, ChevronLeft, ChevronRight, Layers, Video } from "lucide-react";
 
 type Asset = any;
@@ -21,17 +22,14 @@ export default function LibraryClient({
   const [activeTab, setActiveTab] = useState<"public" | "private">("private");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [targetLanguage, setTargetLanguage] = useState("All");
   const itemsPerPage = 8;
+  const router = useRouter();
 
   // Filter assets based on active tab or if tabs are hidden (treat as private for standard filtering)
   const baseAssets = (activeTab === "private" || hideTabs) ? initialAssets : publicAssets.filter((a: any) => !a.playlist_id);
   
   const filteredAssets = baseAssets.filter((asset: any) => {
-    const matchesSearch = asset.title?.toLowerCase().includes(searchQuery.toLowerCase());
-    const assetLang = asset.transcript_jobs?.[0]?.settings?.targetLanguage || "English";
-    const matchesLang = targetLanguage === "All" || assetLang === targetLanguage;
-    return matchesSearch && matchesLang;
+    return asset.title?.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
   const filteredPlaylists = activeTab === "public" ? playlists.filter((p: any) => p.title.toLowerCase().includes(searchQuery.toLowerCase())) : [];
@@ -81,7 +79,7 @@ export default function LibraryClient({
       )}
 
       {/* Toolbar */}
-      <div className="h-14 border-b border-slate-100 dark:border-neutral-800 flex items-center justify-between px-4 shrink-0 bg-slate-50/50 dark:bg-[#0a0a0a]/50">
+      <div className="h-12 border-b border-slate-100 dark:border-neutral-800 flex items-center justify-between px-4 shrink-0 bg-slate-50/50 dark:bg-[#0a0a0a]/50">
         <div className="flex items-center gap-2 w-full max-w-md">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 dark:text-neutral-400" />
@@ -90,28 +88,14 @@ export default function LibraryClient({
               placeholder="Tìm kiếm video..." 
               value={searchQuery}
               onChange={handleSearchChange}
-              className="w-full h-9 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg pl-9 pr-4 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-sm"
+              className="w-full h-8 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg pl-9 pr-4 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-sm"
             />
           </div>
-          <select
-            value={targetLanguage}
-            onChange={(e) => {
-              setTargetLanguage(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="h-9 px-3 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg text-sm font-medium text-slate-700 dark:text-neutral-300 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors shadow-sm shrink-0 dark:text-neutral-200"
-          >
-            <option value="All">Tất cả tiếng</option>
-            <option value="English">Tiếng Anh</option>
-            <option value="Chinese">Tiếng Trung</option>
-            <option value="Japanese">Tiếng Nhật</option>
-            <option value="Korean">Tiếng Hàn</option>
-          </select>
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto flex flex-col">
+      <div className="flex-1 overflow-y-auto flex flex-col scrollbar-hide">
         {totalItems === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-8 flex-1">
             <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4 border border-slate-200 shadow-sm dark:bg-neutral-900 dark:border-neutral-700">
@@ -122,108 +106,134 @@ export default function LibraryClient({
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4 sm:p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 p-3 lg:p-4">
               {currentItems.map((item) => {
                 if (item.isPlaylist) {
-                  // Count videos by checking publicAssets if we had them linked, but currently we might not have the count 
-                  // unless we query it. We'll mock the count or derive it.
                   const count = publicAssets.filter((a: any) => a.playlist_id === item.id).length;
                   return (
-                    <Link href={`/library/playlist/${item.id}`} key={`pl-${item.id}`} className="group bg-white dark:bg-neutral-900 rounded-xl border border-slate-200 dark:border-neutral-700 overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col">
-                      <div className="aspect-video bg-slate-100 dark:bg-neutral-900 relative overflow-hidden border-b border-slate-100 dark:border-neutral-800">
+                    <Link href={`/library/playlist/${item.id}`} key={`pl-${item.id}`} className="group relative rounded-2xl bg-white dark:bg-[#0f0f11] border border-slate-200/80 dark:border-white/5 hover:border-indigo-500/30 overflow-hidden shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 transition-all duration-500 flex flex-col">
+                      <div className="relative aspect-video overflow-hidden bg-slate-100 dark:bg-neutral-900">
                         {item.thumbnail_url ? (
-                          <img src={item.thumbnail_url} alt="Playlist" className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-300" />
+                          <img src={item.thumbnail_url} alt="Playlist" className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110" />
                         ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-indigo-900 to-slate-900 opacity-90 group-hover:scale-105 transition-transform duration-300" />
+                          <div className="w-full h-full bg-gradient-to-br from-indigo-900 via-slate-800 to-black transition-transform duration-700 ease-out group-hover:scale-110" />
                         )}
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm border border-white/20 flex items-center justify-center">
-                            <Layers className="w-6 h-6 text-white" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-500"></div>
+                        
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0">
+                          <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 text-white shadow-lg">
+                            <Layers className="w-6 h-6" />
                           </div>
                         </div>
-                        <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+
+                        <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md border border-white/10 text-white text-[10px] font-bold px-2 py-1 rounded-md flex items-center gap-1 uppercase tracking-wider">
+                          <Layers className="w-3 h-3 text-indigo-400" />
                           {count} VIDEO
                         </div>
                       </div>
-                      <div className="p-4 flex-1 flex flex-col">
-                        <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 line-clamp-2 mb-2 flex-1">{item.title}</h3>
-                        <p className="text-xs text-slate-500 font-medium">Playlist</p>
+                      <div className="p-3 flex-1 flex flex-col gap-1.5">
+                        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 line-clamp-2 leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors flex-1">{item.title}</h3>
+                        <div className="flex items-center justify-between mt-1">
+                          <p className="text-[10px] text-slate-500 dark:text-neutral-500 font-medium tracking-wide">PLAYLIST</p>
+                        </div>
                       </div>
                     </Link>
                   )
                 }
 
                 const asset = item;
-                const jobStatus = asset.transcript_jobs?.[0]?.status;
                 const isProcessing = asset.status !== 'ready' && asset.status !== 'failed';
 
                 return (
-                  <div key={asset.id} className="group bg-white dark:bg-neutral-900 rounded-xl border border-slate-200 dark:border-neutral-700 overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col">
-                    {/* Thumbnail */}
-                    <div className="aspect-video bg-slate-100 dark:bg-[#0a0a0a] relative overflow-hidden border-b border-slate-100 dark:border-neutral-800 dark:bg-neutral-900">
+                  <div key={asset.id} className="group relative rounded-2xl bg-white dark:bg-[#0f0f11] border border-slate-200/80 dark:border-white/5 hover:border-indigo-500/30 overflow-hidden shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 transition-all duration-500 flex flex-col block">
+                    <Link href={asset.status === 'ready' ? `/video/${asset.id}` : '#'} className={`relative aspect-video overflow-hidden bg-slate-100 dark:bg-neutral-900 block ${asset.status !== 'ready' ? 'cursor-default' : 'cursor-pointer'}`}>
                       {asset.type === 'youtube' ? (
                         (() => {
                           const ytMatch = asset.source_url?.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&]{11})/);
                           const ytId = ytMatch ? ytMatch[1] : null;
                           return ytId ? (
                             <img 
-                              src={`https://img.youtube.com/vi/${ytId}/mqdefault.jpg`} 
+                              src={`https://img.youtube.com/vi/${ytId}/maxresdefault.jpg`} 
+                              onError={(e) => {
+                                // Fallback to mqdefault if maxresdefault doesn't exist
+                                e.currentTarget.src = `https://img.youtube.com/vi/${ytId}/mqdefault.jpg`;
+                              }}
                               alt="Thumbnail" 
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
                             />
                           ) : (
-                            <div className="w-full h-full bg-indigo-50 flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
-                              <span className="text-indigo-400 font-bold text-[10px] uppercase">YT</span>
+                            <div className="w-full h-full bg-gradient-to-br from-indigo-900 to-slate-900 transition-transform duration-700 ease-out group-hover:scale-110 flex items-center justify-center">
+                              <span className="text-indigo-400 font-bold text-xs uppercase">YT</span>
                             </div>
                           );
                         })()
                       ) : (
-                        <div className="w-full h-full bg-slate-50 flex items-center justify-center group-hover:scale-105 transition-transform duration-300 dark:bg-[#0a0a0a]">
-                          <PlayCircle className="w-8 h-8 text-slate-300" />
+                        <div className="w-full h-full bg-slate-100 dark:bg-neutral-800 transition-transform duration-700 ease-out group-hover:scale-110 flex items-center justify-center">
+                          <PlayCircle className="w-8 h-8 text-slate-300 dark:text-neutral-600" />
                         </div>
                       )}
                       
-                      {/* Status Badge Over Thumbnail */}
-                      <div className="absolute top-2 right-2">
+                      {/* Gradient overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-500"></div>
+                      
+                      {/* Play Button Hover (only if ready) */}
+                      {asset.status === 'ready' && (
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0">
+                          <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 text-white shadow-lg">
+                            <PlayCircle className="w-8 h-8 fill-white/10" />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Status Badges */}
+                      <div className="absolute top-3 right-3 flex flex-col gap-2 items-end">
                         {asset.status === 'ready' && (
-                          <span className="bg-emerald-500/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">Hoàn tất</span>
+                          <span className="bg-emerald-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-md shadow-sm uppercase tracking-wider">Sẵn sàng</span>
                         )}
                         {asset.status === 'failed' && (
-                          <span className="bg-rose-500/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">Lỗi</span>
+                          <span className="bg-rose-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-md shadow-sm uppercase tracking-wider">Lỗi</span>
                         )}
                         {isProcessing && (
-                          <span className="bg-indigo-600/90 dark:bg-white/90 text-white dark:text-[#0a0a0a] text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1 backdrop-blur-sm">
-                            <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
+                          <span className="bg-indigo-600/90 text-white text-[10px] font-bold px-2.5 py-1 rounded-md shadow-lg flex items-center gap-1.5 backdrop-blur-md uppercase tracking-wider">
+                            <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping"></span>
                             Đang xử lý
                           </span>
                         )}
                       </div>
-                    </div>
+
+                      {/* Video Type Badge */}
+                      <div className="absolute bottom-3 left-3">
+                        <span className="px-2 py-1 rounded-md bg-black/60 backdrop-blur-md border border-white/10 text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                          {asset.type === 'youtube' ? <Video className="w-3 h-3 text-red-500" /> : <Video className="w-3 h-3 text-indigo-400" />}
+                          {asset.type === 'youtube' ? 'YouTube' : 'Video'}
+                        </span>
+                      </div>
+                    </Link>
 
                     {/* Info */}
-                    <div className="p-4 flex-1 flex flex-col">
-                      <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 line-clamp-2 mb-2 flex-1" title={asset.title}>{asset.title}</h3>
+                    <div className="p-3 flex-1 flex flex-col gap-1.5">
+                      <Link href={asset.status === 'ready' ? `/video/${asset.id}` : '#'} className={asset.status !== 'ready' ? 'pointer-events-none' : ''}>
+                        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 line-clamp-2 leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" title={asset.title}>
+                          {asset.title}
+                        </h3>
+                      </Link>
                       
-                      <div className="flex items-center justify-between mt-auto pt-3 border-t border-slate-100 dark:border-neutral-700 dark:border-neutral-800">
-                        <div className="flex flex-col gap-1">
-                          <span className="uppercase tracking-wider text-[10px] text-slate-400 font-bold dark:text-neutral-400">
-                            {asset.type === 'youtube' ? 'YouTube' : 'Video'}
-                          </span>
-                          <span className="text-xs text-slate-500 dark:text-neutral-400 font-medium">{new Date(asset.created_at).toLocaleDateString('vi-VN', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                        </div>
+                      <div className="flex items-center justify-between mt-auto pt-1">
+                        <span className="text-[10px] text-slate-500 dark:text-neutral-500 font-medium tracking-wide">
+                          {new Date(asset.created_at).toLocaleDateString('vi-VN', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
                         
                         <div className="flex items-center gap-1">
-                          {asset.status === 'ready' && (
-                            <Link href={`/video/${asset.id}`} className="w-8 h-8 flex items-center justify-center bg-indigo-50 dark:bg-neutral-800 text-indigo-600 dark:text-neutral-200 hover:bg-indigo-600 hover:text-white rounded-lg transition-colors" title="Học tiếp">
-                              <PlayCircle className="w-4 h-4" />
-                            </Link>
+                          {asset.status !== 'ready' && (
+                            <button className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors dark:text-neutral-500">
+                              <MoreVertical className="w-3 h-3" />
+                            </button>
                           )}
-                          <button className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors dark:text-white dark:text-neutral-400">
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
+                          {asset.status === 'ready' && (
+                            <button className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors dark:text-neutral-500">
+                              <MoreVertical className="w-3 h-3" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -234,39 +244,56 @@ export default function LibraryClient({
 
             {/* Pagination Controls */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between border-t border-slate-200 dark:border-neutral-800 px-4 sm:px-6 py-4 mt-auto bg-slate-50/50 dark:bg-[#0a0a0a]/50 dark:border-neutral-700">
-                <div className="text-sm text-slate-500 font-medium dark:text-neutral-400">
-                  Hiển thị <span className="font-bold text-slate-900 dark:text-slate-100">{startIndex + 1}</span> đến <span className="font-bold text-slate-900 dark:text-slate-100">{Math.min(startIndex + itemsPerPage, totalItems)}</span> trong số <span className="font-bold text-slate-900 dark:text-slate-100">{totalItems}</span> mục
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
+              <div className="mt-auto px-4 py-2 border-t border-slate-100 dark:border-neutral-800 flex items-center justify-between bg-slate-50/50 dark:bg-[#0a0a0a]/50 shrink-0">
+                <span className="text-xs text-slate-500 dark:text-neutral-400">
+                  Hiển thị <span className="font-bold text-slate-900 dark:text-white">{startIndex + 1}</span> đến <span className="font-bold text-slate-900 dark:text-white">{Math.min(startIndex + itemsPerPage, totalItems)}</span> trong số <span className="font-bold text-slate-900 dark:text-white">{totalItems}</span> mục
+                </span>
+                
+                <div className="flex items-center gap-1">
+                  <button 
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="w-9 h-9 flex items-center justify-center bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg text-slate-600 dark:text-neutral-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-indigo-600 disabled:opacity-50 disabled:pointer-events-none transition-colors shadow-sm"
+                    className="w-7 h-7 flex items-center justify-center rounded border border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    <ChevronLeft className="w-4 h-4" />
+                    <ChevronLeft className="w-3 h-3" />
                   </button>
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: totalPages }).map((_, idx) => {
-                      const page = idx + 1;
-                      // Logic to show limited pages if total pages > 5 could go here, keeping simple for now
+                  
+                  {/* Page Numbers */}
+                  <div className="flex items-center gap-1 hidden sm:flex">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+                      
                       return (
                         <button
-                          key={page}
-                          onClick={() => handlePageChange(page)}
-                          className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm font-bold transition-colors shadow-sm ${ currentPage === page ? 'bg-indigo-600 text-white border-transparent' : 'bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-300 hover:bg-slate-50 dark:hover:bg-slate-700' }`}
+                          key={pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          className={`w-7 h-7 flex items-center justify-center rounded text-xs font-bold transition-colors ${
+                            currentPage === pageNum 
+                              ? "bg-indigo-600 text-white border border-indigo-600" 
+                              : "border border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800"
+                          }`}
                         >
-                          {page}
+                          {pageNum}
                         </button>
                       );
                     })}
                   </div>
-                  <button
+
+                  <button 
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className="w-9 h-9 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 hover:text-indigo-600 disabled:opacity-50 disabled:pointer-events-none transition-colors shadow-sm dark:bg-[#0a0a0a] dark:text-neutral-300 dark:border-neutral-700"
+                    className="w-7 h-7 flex items-center justify-center rounded border border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    <ChevronRight className="w-4 h-4" />
+                    <ChevronRight className="w-3 h-3" />
                   </button>
                 </div>
               </div>

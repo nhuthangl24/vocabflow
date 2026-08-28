@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -34,8 +35,9 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
     if (signedUrlData) videoUrl = signedUrlData.signedUrl;
   }
 
-  // Fetch job
-  const { data: job } = await supabase
+  // Fetch job using adminClient to bypass RLS for public videos
+  const adminClient = createAdminClient();
+  const { data: job } = await adminClient
     .from("transcript_jobs")
     .select("id, status, settings")
     .eq("media_asset_id", asset.id)
@@ -45,18 +47,16 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
   let vocabulary = [];
   let grammar = [];
   if (job && job.status === "completed") {
-    const { data: vocabData } = await supabase
+    const { data: vocabData } = await adminClient
       .from("vocabulary_items")
       .select("*")
       .eq("job_id", job.id);
-    
     if (vocabData) vocabulary = vocabData;
 
-    const { data: grammarData } = await supabase
+    const { data: grammarData } = await adminClient
       .from("grammar_items")
       .select("*")
       .eq("job_id", job.id);
-    
     if (grammarData) grammar = grammarData;
   }
 

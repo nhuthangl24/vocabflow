@@ -23,7 +23,6 @@ type VocabularyItem = {
 
 export default function VocabularyClient({ items }: { items: VocabularyItem[] }) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [targetLanguage, setTargetLanguage] = useState("All");
   const [selectedItem, setSelectedItem] = useState<VocabularyItem | null>(null);
 
   // Deduplicate items based on term (case insensitive)
@@ -37,11 +36,8 @@ export default function VocabularyClient({ items }: { items: VocabularyItem[] })
   }, []);
 
   const filteredItems = deduplicatedItems.filter((item) => {
-    const matchesSearch = item.term.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          item.meaning_vi.toLowerCase().includes(searchQuery.toLowerCase());
-    const itemLang = (item as any).transcript_jobs?.settings?.targetLanguage || "English";
-    const matchesLang = targetLanguage === "All" || itemLang === targetLanguage;
-    return matchesSearch && matchesLang;
+    return item.term.toLowerCase().includes(searchQuery.toLowerCase()) ||
+           item.meaning_vi.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
   const playAudio = (e: React.MouseEvent, text: string, langName: string) => {
@@ -115,18 +111,6 @@ export default function VocabularyClient({ items }: { items: VocabularyItem[] })
             className="w-full h-9 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg pl-9 pr-4 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-sm"
           />
         </div>
-        
-        <select
-          value={targetLanguage}
-          onChange={(e) => setTargetLanguage(e.target.value)}
-          className="ml-3 h-9 px-3 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg text-sm font-medium text-slate-700 dark:text-neutral-300 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors shadow-sm shrink-0 dark:text-neutral-200"
-        >
-          <option value="All">Tất cả tiếng</option>
-          <option value="English">Tiếng Anh</option>
-          <option value="Chinese">Tiếng Trung</option>
-          <option value="Japanese">Tiếng Nhật</option>
-          <option value="Korean">Tiếng Hàn</option>
-        </select>
 
         <div className="ml-auto text-sm font-medium text-slate-500 dark:text-neutral-400">
           Tổng cộng: {filteredItems.length} từ
@@ -268,6 +252,20 @@ export default function VocabularyClient({ items }: { items: VocabularyItem[] })
                       <p className="text-sm text-slate-600 dark:text-neutral-300">Dịch: {selectedItem.sentence_translation_vi}</p>
                     )}
                   </div>
+                  
+                  {selectedItem.examples && selectedItem.examples.length > 0 && (
+                    <div className="mt-4">
+                      <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2 dark:text-neutral-400">Ví dụ bổ sung</h4>
+                      <div className="space-y-3">
+                        {selectedItem.examples.map((ex: any, i: number) => (
+                          <div key={i} className="pl-3 border-l-2 border-slate-300 dark:border-neutral-600">
+                            <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200">{ex.sentence}</p>
+                            <p className="text-sm text-slate-500 italic mt-1 dark:text-neutral-400">{ex.translationVi}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -278,30 +276,30 @@ export default function VocabularyClient({ items }: { items: VocabularyItem[] })
                 </div>
               )}
               
-              {(selectedItem.synonyms?.length > 0 || selectedItem.antonyms?.length > 0) && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-2">
-                  {selectedItem.synonyms?.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2 dark:text-neutral-400">Đồng nghĩa</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedItem.synonyms.map(syn => (
-                          <span key={syn} className="px-2.5 py-1 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium border border-slate-200/60 dark:text-neutral-200 dark:bg-neutral-900">{syn}</span>
+              {(selectedItem.synonyms?.length || 0) > 0 || (selectedItem.antonyms?.length || 0) > 0 ? (
+                <div className="flex flex-col sm:flex-row gap-4 mt-2">
+                  {(selectedItem.synonyms?.length || 0) > 0 && (
+                    <div className="flex-1 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 dark:bg-indigo-900/10 dark:border-indigo-900/30">
+                      <h4 className="text-xs font-bold text-indigo-700 uppercase tracking-wider mb-2 flex items-center gap-1.5 dark:text-indigo-400">Từ đồng nghĩa</h4>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedItem.synonyms?.map((syn: string, i: number) => (
+                          <span key={i} className="bg-white text-indigo-700 px-2.5 py-1 rounded-md text-sm border border-indigo-100 shadow-sm font-medium dark:bg-[#0a0a0a] dark:border-indigo-900/50 dark:text-indigo-300">{syn}</span>
                         ))}
                       </div>
                     </div>
                   )}
-                  {selectedItem.antonyms?.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2 dark:text-neutral-400">Trái nghĩa</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedItem.antonyms.map(ant => (
-                          <span key={ant} className="px-2.5 py-1 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium border border-slate-200/60 dark:text-neutral-200 dark:bg-neutral-900">{ant}</span>
+                  {(selectedItem.antonyms?.length || 0) > 0 && (
+                    <div className="flex-1 bg-rose-50/50 p-4 rounded-xl border border-rose-100 dark:bg-rose-900/10 dark:border-rose-900/30">
+                      <h4 className="text-xs font-bold text-rose-700 uppercase tracking-wider mb-2 flex items-center gap-1.5 dark:text-rose-400">Từ trái nghĩa</h4>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedItem.antonyms?.map((ant: string, i: number) => (
+                          <span key={i} className="bg-white text-rose-700 px-2.5 py-1 rounded-md text-sm border border-rose-100 shadow-sm font-medium dark:bg-[#0a0a0a] dark:border-rose-900/50 dark:text-rose-300">{ant}</span>
                         ))}
                       </div>
                     </div>
                   )}
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
         </div>

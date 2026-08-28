@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPlaylist, deletePlaylist, getPlaylists, createAdminMediaJob } from "@/app/actions/admin";
-import { Trash2, Plus, Upload, Youtube, Layers } from "lucide-react";
+import { Trash2, Plus, Upload, Video, Layers } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function AdminPage() {

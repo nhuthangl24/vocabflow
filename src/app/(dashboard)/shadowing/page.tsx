@@ -19,6 +19,7 @@ export default async function ShadowingLibraryPage() {
     .from('media_assets')
     .select('*, transcript_jobs(settings)')
     .eq('user_id', user.id)
+    .or("is_public.is.null,is_public.eq.false")
     .eq('module', 'shadowing')
     .neq('status', 'deleted')
     .order('created_at', { ascending: false });

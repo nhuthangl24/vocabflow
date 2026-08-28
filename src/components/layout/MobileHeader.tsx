@@ -94,20 +94,25 @@ export default function MobileHeader({ user }: { user: any }) {
                     Xem chi tiết
                   </Link>
                 </div>
+              ) : user?.user_metadata?.plan === 'basic' ? (
+                <div className="bg-gradient-to-b from-emerald-50 to-teal-50 dark:from-emerald-500/10 dark:to-teal-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="w-5 h-5 text-emerald-500 dark:text-emerald-400 fill-emerald-500 dark:fill-emerald-400" />
+                    <span className="text-sm font-bold text-emerald-900 dark:text-emerald-100">Gói Basic Kích Hoạt</span>
+                  </div>
+                  <p className="text-xs text-emerald-700/80 font-medium mb-3 leading-relaxed dark:text-emerald-200/80">Nâng cấp Pro để mở khóa không giới hạn.</p>
+                  <Link href="/pricing" onClick={() => setIsOpen(false)} className="block w-full text-center px-4 py-2.5 bg-white dark:bg-emerald-500/20 border border-emerald-100 dark:border-emerald-500/30 text-xs font-bold text-emerald-700 dark:text-emerald-100 rounded-lg shadow-sm active:bg-emerald-50 dark:active:bg-emerald-500/30 transition-colors">
+                    Nâng cấp Pro
+                  </Link>
+                </div>
               ) : (
                 <div className="bg-gradient-to-b from-amber-50 to-amber-100/50 border border-amber-200/50 rounded-2xl p-5">
                   <div className="flex items-center gap-2 mb-2">
                     <Zap className="w-5 h-5 text-amber-500 fill-amber-500" />
-                    <span className="text-sm font-bold text-slate-900 dark:text-white">Nâng cấp gói Pro</span>
+                    <span className="text-sm font-bold text-amber-900">Nâng cấp tài khoản</span>
                   </div>
-                  <p className="text-[12px] text-slate-600 font-medium mb-4 leading-relaxed dark:text-neutral-300">
-                    Mở khóa tính năng dịch AI & từ vựng nâng cao không giới hạn.
-                  </p>
-                  <Link 
-                    onClick={() => setIsOpen(false)} 
-                    href="/pricing" 
-                    className="flex items-center justify-center w-full px-4 py-2.5 bg-white border border-amber-200 text-sm font-bold text-amber-700 rounded-xl shadow-sm hover:bg-amber-50 transition-colors dark:bg-[#0a0a0a]"
-                  >
+                  <p className="text-xs text-amber-700/80 font-medium mb-4 leading-relaxed">Mở khóa tính năng dịch AI và lưu từ vựng không giới hạn.</p>
+                  <Link href="/pricing" onClick={() => setIsOpen(false)} className="block w-full text-center px-4 py-2.5 bg-white border border-amber-200 text-xs font-bold text-amber-700 rounded-xl shadow-sm active:bg-amber-50 transition-colors">
                     Xem bảng giá
                   </Link>
                 </div>

@@ -10,22 +10,18 @@ export const maxDuration = 300; // 5 minutes max duration for Next.js
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Verify authorization (simple bearer token check)
-    const authHeader = req.headers.get("Authorization");
-    if (authHeader !== `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    // Authorization is removed because we call this from the browser.
+    // The jobId is a UUID v4 and acts as a capability URL.
 
     const { jobId } = await req.json();
     if (!jobId) {
       return NextResponse.json({ error: "Missing jobId" }, { status: 400 });
     }
 
-    // Process asynchronously (Note: Next.js might kill this depending on deployment. 
-    // Works fine locally or with maxDuration configured).
-    processJob(jobId).catch(console.error);
+    // Process synchronously to prevent Next.js from killing the task
+    await processJob(jobId);
 
-    return NextResponse.json({ status: "processing started", jobId });
+    return NextResponse.json({ status: "processing completed", jobId });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -52,6 +48,15 @@ async function processJob(jobId: string) {
       .single();
 
     if (jobError || !job) throw new Error("Job not found");
+    if (job.status === "completed" || job.status === "ready") {
+      console.log(`Job ${jobId} is already ${job.status}, skipping.`);
+      return;
+    }
+
+    // Reset status to queued if retrying
+    if (job.status !== "queued") {
+      await supabase.from("transcript_jobs").update({ status: "queued", error_message: null }).eq("id", jobId);
+    }
 
     // Fetch asset explicitly to avoid join array/object ambiguity
     const { data: asset, error: assetError } = await supabase
@@ -231,8 +236,10 @@ async function processJob(jobId: string) {
           
           // Fetch real user plan to determine limits
           const { data: userData } = await supabase.auth.admin.getUserById(job.user_id);
-          const isPro = userData?.user?.user_metadata?.plan === 'pro';
-          const MAX_ALLOWED = isPro ? 100 : 35;
+          const userPlan = (userData?.user?.user_metadata?.plan || 'free').toLowerCase();
+          let MAX_ALLOWED = 20; // free limit
+          if (userPlan === 'basic') MAX_ALLOWED = 50;
+          if (userPlan === 'pro') MAX_ALLOWED = 100;
           
           const requestedCount = job.settings?.targetCount ? Number(job.settings.targetCount) : 35;
           const MAX_WORDS = Math.min(requestedCount, MAX_ALLOWED);
@@ -319,7 +326,10 @@ async function processJob(jobId: string) {
             // 60k chars is about 15k tokens, very safe for modern LLMs.
             const grammarTargetText = fullTranscript.length > 60000 ? fullTranscript.substring(0, 60000) : fullTranscript;
             
-            const grammarExtraction = await extractGrammar(grammarTargetText, { ...job.settings, targetCount: 5 });
+            // Grammar is not limited by package. Calculate as requestedCount - 5 (or a minimum of 1).
+            const grammarTargetCount = Math.max(1, requestedCount - 5);
+
+            const grammarExtraction = await extractGrammar(grammarTargetText, { ...job.settings, targetCount: grammarTargetCount });
             const grammarItems = grammarExtraction?.items || [];
             
             const grammarInserts = grammarItems.map(item => ({

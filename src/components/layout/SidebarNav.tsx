@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Library, BookOpen, LineChart, Settings, Headphones } from "lucide-react";
 import { ThemeToggle } from "../ThemeToggle";
+import { LayoutDashboard, Library, BookOpen, LineChart, Settings, Headphones, ShieldAlert } from "lucide-react";
 
 type SidebarNavProps = {
   isCollapsed?: boolean;

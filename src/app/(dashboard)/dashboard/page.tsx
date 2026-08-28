@@ -28,46 +28,57 @@ export default async function DashboardPage() {
   }
 
   if (user) {
-    // Fetch recent vocabulary media assets (DB-level filter)
-    const { data: ma } = await supabase
-      .from("media_assets")
-      .select("*, transcript_jobs(status, error_message, settings)")
-      .neq("status", "deleted")
-      .eq("module", "vocabulary")
-      .order("created_at", { ascending: false })
-      .limit(4);
-      
-    if (ma) {
-      mediaAssets = ma;
-    }
-
-    // Fetch total vocabulary media assets count for stats
-    const { count: mc } = await supabase
-      .from("media_assets")
-      .select("*", { count: "exact", head: true })
-      .neq("status", "deleted")
-      .eq("module", "vocabulary");
-      
-    totalVideosCount = mc || 0;
-
-    // Fetch total vocabulary items for user
-    const { count: vc } = await supabase
-      .from("vocabulary_items")
-      .select("*", { count: "exact", head: true });
-      
-    vocabCount = vc || 0;
-
-    // Fetch today's video count for rate limiting (only vocabulary AI extraction)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const { count: tc } = await supabase
-      .from("media_assets")
-      .select("*", { count: "exact", head: true })
-      .gte("created_at", today.toISOString())
-      .neq("status", "failed")
-      .neq("status", "deleted")
-      .eq("module", "vocabulary");
-    
+
+    // Run queries concurrently for better performance
+    const [
+      { data: ma },
+      { count: mc },
+      { count: vc },
+      { count: tc }
+    ] = await Promise.all([
+      // Fetch recent vocabulary media assets
+      supabase
+        .from("media_assets")
+        .select("*, transcript_jobs(status, error_message, settings)")
+        .neq("status", "deleted")
+        .eq("user_id", user.id)
+        .or("is_public.is.null,is_public.eq.false")
+        .eq("module", "vocabulary")
+        .order("created_at", { ascending: false })
+        .limit(4),
+
+      // Fetch total vocabulary media assets count
+      supabase
+        .from("media_assets")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .or("is_public.is.null,is_public.eq.false")
+        .neq("status", "deleted")
+        .eq("module", "vocabulary"),
+
+      // Fetch total vocabulary items for user
+      supabase
+        .from("vocabulary_items")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id),
+
+      // Fetch today's video count
+      supabase
+        .from("media_assets")
+        .select("*", { count: "exact", head: true })
+        .gte("created_at", today.toISOString())
+        .eq("user_id", user.id)
+        .or("is_public.is.null,is_public.eq.false")
+        .neq("status", "failed")
+        .neq("status", "deleted")
+        .eq("module", "vocabulary")
+    ]);
+
+    if (ma) mediaAssets = ma;
+    totalVideosCount = mc || 0;
+    vocabCount = vc || 0;
     todayCount = tc || 0;
   }
 
@@ -138,7 +149,7 @@ export default async function DashboardPage() {
               <Link href="/library" className="text-xs font-semibold text-indigo-600 dark:text-neutral-200 hover:text-indigo-700">Xem thư viện &rarr;</Link>
             </div>
             <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-slate-200 dark:border-neutral-800 shadow-sm overflow-hidden dark:border-neutral-700">
-              <RecentVideosClient initialAssets={mediaAssets || []} />
+              <RecentVideosClient initialAssets={mediaAssets || []} userId={user?.id || ""} />
             </div>
           </div>
 
@@ -147,8 +158,6 @@ export default async function DashboardPage() {
         {/* Sidebar / Right Column */}
         <div className="space-y-8">
           
-
-
           {/* AI Usage Card */}
           {!isAdmin && (
           <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-slate-200 dark:border-neutral-800 p-6 shadow-sm dark:border-neutral-700">

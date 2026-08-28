@@ -15,7 +15,7 @@ export default async function DashboardLayout({
       <Sidebar />
       <div className="flex-1 flex flex-col h-screen relative min-w-0">
         <MobileHeader user={user} />
-        <main className="flex-1 overflow-y-auto relative z-0">
+        <main className="flex-1 overflow-y-auto scrollbar-hide relative z-0">
           {children}
         </main>
       </div>

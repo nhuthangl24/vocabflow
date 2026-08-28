@@ -33,12 +33,14 @@ export default function ShadowingUploadBanner({
     setUploading(true);
 
     try {
+      let createdJob = null;
+
       if (activeTab === 'youtube') {
         if (!youtubeUrl.includes("youtube.com") && !youtubeUrl.includes("youtu.be")) {
           throw new Error("Invalid YouTube link.");
         }
         
-        await createMediaJob({
+        const res = await createMediaJob({
           title: "YouTube Video",
           type: "youtube",
           storagePath: "", 
@@ -47,6 +49,7 @@ export default function ShadowingUploadBanner({
           settings: { targetLanguage, module: 'shadowing' },
           module: 'shadowing'
         });
+        createdJob = res.job;
       } else {
         // Fallback for upload via hidden file input (handled by standard click)
         const fileInput = document.getElementById('inline-file-upload') as HTMLInputElement;
@@ -67,7 +70,7 @@ export default function ShadowingUploadBanner({
 
         if (uploadError) throw uploadError;
 
-        await createMediaJob({
+        const res = await createMediaJob({
           title: file.name,
           type,
           storagePath: uploadData.path,
@@ -75,10 +78,20 @@ export default function ShadowingUploadBanner({
           settings: { targetLanguage, module: 'shadowing' },
           module: 'shadowing'
         });
+        createdJob = res.job;
       }
 
       setYoutubeUrl("");
       router.refresh();
+
+      // Trigger processing in the background non-blockingly
+      if (createdJob) {
+        fetch("/api/webhooks/transcription", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jobId: createdJob.id })
+        }).catch(e => console.error("Webhook failed:", e));
+      }
 
     } catch (err: any) {
       setError(err.message || "An error occurred.");

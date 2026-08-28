@@ -158,7 +158,7 @@ export default function VideoWorkspaceClient({ videoUrl, vocabulary, grammar = [
                   <div key={vocab.id} className="relative" style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'both' }}>
                     {/* The Static Background Card */}
                     <div 
-                      className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 h-full flex flex-col justify-between ${selectedVocab?.id === vocab.id ? 'opacity-0' : 'border-gray-200 hover:border-blue-300 hover:shadow-md bg-white dark:bg-[#0a0a0a]'} dark:bg-[#0a0a0a]`}
+                      className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 h-full flex flex-col justify-between border-gray-200 hover:border-blue-300 hover:shadow-md bg-white dark:bg-[#0a0a0a]`}
                       onClick={() => setSelectedVocab(vocab)}
                     >
                       <div>
@@ -174,89 +174,6 @@ export default function VideoWorkspaceClient({ videoUrl, vocabulary, grammar = [
                       </div>
                     </div>
 
-                    {/* The Floating Popover (Fixed Modal) */}
-                    {selectedVocab?.id === vocab.id && (
-                      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-                        <div className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm transition-opacity" onClick={(e) => { e.stopPropagation(); setSelectedVocab(null); }}></div>
-                        
-                        <div className="relative bg-white dark:bg-[#0a0a0a] p-6 sm:p-8 rounded-2xl shadow-2xl border border-gray-200 dark:border-neutral-700 w-full max-w-lg max-h-[90vh] overflow-y-auto animate-in zoom-in-95 fade-in duration-200 dark:bg-[#0a0a0a] dark:border-neutral-700">
-                          
-                          <div className="sticky top-0 z-10 bg-white dark:bg-[#0a0a0a] flex justify-between items-start mb-4 pb-4 pt-6 sm:pt-8 -mt-6 sm:-mt-8 -mx-6 sm:-mx-8 px-6 sm:px-8 border-b border-gray-100 dark:border-neutral-800">
-                            <div>
-                              <div className="flex items-center gap-3">
-                                <h2 className="text-2xl sm:text-3xl font-bold text-blue-700 dark:text-white capitalize leading-tight">
-                                  {vocab.term}
-                                </h2>
-                                <button 
-                                  onClick={(e) => playAudio(e, vocab.term, targetLanguage)}
-                                  className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center hover:bg-slate-200 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700 transition-colors shadow-sm mt-1"
-                                  title="Phát âm"
-                                >
-                                  <Volume2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                              <span className="text-gray-500 dark:text-neutral-400 text-base font-normal mt-1 block normal-case font-pronunciation dark:text-neutral-400">{vocab.pronunciation}</span>
-                            </div>
-                            
-                            <div className="flex items-start gap-2">
-                              <div className="flex items-center gap-1 mr-2 hidden sm:flex">
-                                {getDictionaryLinks(vocab.term, targetLanguage).map((dict, i) => (
-                                  <a 
-                                    key={i}
-                                    href={dict.url}
-                                    target="_blank" rel="noopener noreferrer"
-                                    className="px-3 py-1.5 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 border border-slate-200 dark:border-neutral-700"
-                                  >
-                                    {dict.name} <ExternalLink className="w-3 h-3" />
-                                  </a>
-                                ))}
-                              </div>
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); setSelectedVocab(null); }}
-                                className="text-gray-400 hover:text-gray-900 dark:text-white p-2 rounded-full hover:bg-gray-100 bg-gray-50 transition-colors shrink-0 dark:text-neutral-400 dark:bg-neutral-900"
-                              >
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                              </button>
-                            </div>
-                          </div>
-  
-                          <div className="inline-flex items-center gap-2 mb-6 bg-blue-50 dark:bg-neutral-800 px-3 py-1.5 rounded-lg border border-blue-100 dark:border-neutral-700">
-                            <span className="text-sm font-semibold text-blue-700 dark:text-white uppercase tracking-wider">{vocab.part_of_speech}</span>
-                            <span className="text-blue-300">•</span>
-                            <span className="text-sm font-bold text-blue-700 dark:text-white">{vocab.level}</span>
-                          </div>
-                          
-                          <div className="space-y-6">
-                            <div>
-                              <h3 className="font-semibold text-gray-500 dark:text-neutral-400 text-xs uppercase tracking-wider mb-2 dark:text-neutral-400">Ý nghĩa</h3>
-                              <p className="text-gray-900 dark:text-white font-medium text-lg first-letter:uppercase">{vocab.meaning_vi}</p>
-                              <p className="text-sm text-gray-500 dark:text-neutral-400 italic mt-1 bg-gray-50 p-2 rounded border border-gray-100 dark:text-neutral-400 dark:bg-[#0a0a0a] dark:border-neutral-800">Ngữ cảnh: {vocab.context_meaning_vi}</p>
-                            </div>
-
-                            {vocab.usage_note_vi && (
-                              <div>
-                                <h3 className="font-semibold text-gray-500 dark:text-neutral-400 text-xs uppercase tracking-wider mb-2 dark:text-neutral-400">Cách dùng</h3>
-                                <p className="text-gray-700 dark:text-neutral-200 leading-relaxed dark:text-neutral-200">{vocab.usage_note_vi}</p>
-                              </div>
-                            )}
-
-                            <div>
-                              <h3 className="font-semibold text-gray-500 dark:text-neutral-400 text-xs uppercase tracking-wider mb-3 dark:text-neutral-400">Ví dụ</h3>
-                              <div className="bg-blue-50/70 dark:bg-neutral-900 p-4 rounded-xl border border-blue-100 dark:border-neutral-700 mb-3 shadow-sm">
-                                <p className="font-medium text-gray-900 dark:text-white text-[15px] leading-relaxed">"{vocab.original_sentence}"</p>
-                                <p className="text-gray-600 dark:text-neutral-300 italic mt-2 text-sm dark:text-neutral-300">{vocab.sentence_translation_vi}</p>
-                              </div>
-                              {vocab.examples && vocab.examples.map((ex: any, i: number) => (
-                                <div key={i} className="pl-3 mt-3 border-l-2 border-blue-200">
-                                  <p className="text-gray-800 dark:text-neutral-100 text-sm font-medium dark:text-neutral-100">{ex.sentence}</p>
-                                  <p className="text-gray-500 dark:text-neutral-400 italic text-sm mt-1 dark:text-neutral-400">{ex.translationVi}</p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 ))}
                 {filteredVocabulary.filter(v => !v.term.trim().includes(' ')).length === 0 && (
@@ -273,7 +190,7 @@ export default function VideoWorkspaceClient({ videoUrl, vocabulary, grammar = [
                   <div key={vocab.id} className="relative" style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'both' }}>
                     {/* The Static Background Card */}
                     <div 
-                      className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 h-full flex flex-col justify-between ${selectedVocab?.id === vocab.id ? 'opacity-0' : 'border-gray-200 hover:border-purple-300 dark:border-neutral-600 hover:shadow-md bg-white dark:bg-[#0a0a0a]'} dark:bg-[#0a0a0a]`}
+                      className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 h-full flex flex-col justify-between border-gray-200 hover:border-purple-300 dark:border-neutral-600 hover:shadow-md bg-white dark:bg-[#0a0a0a]`}
                       onClick={() => setSelectedVocab(vocab)}
                     >
                       <div>
@@ -289,89 +206,6 @@ export default function VideoWorkspaceClient({ videoUrl, vocabulary, grammar = [
                       </div>
                     </div>
 
-                    {/* The Floating Popover (Fixed Modal) */}
-                    {selectedVocab?.id === vocab.id && (
-                      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-                        <div className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm transition-opacity" onClick={(e) => { e.stopPropagation(); setSelectedVocab(null); }}></div>
-                        
-                        <div className="relative bg-white dark:bg-[#0a0a0a] p-6 sm:p-8 rounded-2xl shadow-2xl border border-gray-200 dark:border-neutral-700 w-full max-w-lg max-h-[90vh] overflow-y-auto animate-in zoom-in-95 fade-in duration-200 dark:bg-[#0a0a0a] dark:border-neutral-700">
-                          
-                          <div className="sticky top-0 z-10 bg-white dark:bg-[#0a0a0a] flex justify-between items-start mb-4 pb-4 pt-6 sm:pt-8 -mt-6 sm:-mt-8 -mx-6 sm:-mx-8 px-6 sm:px-8 border-b border-gray-100 dark:border-neutral-800">
-                            <div>
-                              <div className="flex items-center gap-3">
-                                <h2 className="text-2xl sm:text-3xl font-bold text-purple-700 dark:text-white capitalize leading-tight">
-                                  {vocab.term}
-                                </h2>
-                                <button 
-                                  onClick={(e) => playAudio(e, vocab.term, targetLanguage)}
-                                  className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center hover:bg-slate-200 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700 transition-colors shadow-sm mt-1"
-                                  title="Phát âm"
-                                >
-                                  <Volume2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                              <span className="text-gray-500 dark:text-neutral-400 text-base font-normal mt-1 block normal-case font-pronunciation dark:text-neutral-400">{vocab.pronunciation}</span>
-                            </div>
-                            
-                            <div className="flex items-start gap-2">
-                              <div className="flex items-center gap-1 mr-2 hidden sm:flex">
-                                {getDictionaryLinks(vocab.term, targetLanguage).map((dict, i) => (
-                                  <a 
-                                    key={i}
-                                    href={dict.url}
-                                    target="_blank" rel="noopener noreferrer"
-                                    className="px-3 py-1.5 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 border border-slate-200 dark:border-neutral-700"
-                                  >
-                                    {dict.name} <ExternalLink className="w-3 h-3" />
-                                  </a>
-                                ))}
-                              </div>
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); setSelectedVocab(null); }}
-                                className="text-gray-400 hover:text-gray-900 dark:text-white p-2 rounded-full hover:bg-gray-100 bg-gray-50 transition-colors shrink-0 dark:text-neutral-400 dark:bg-neutral-900"
-                              >
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                              </button>
-                            </div>
-                          </div>
-  
-                          <div className="inline-flex items-center gap-2 mb-6 bg-purple-50 dark:bg-neutral-800 px-3 py-1.5 rounded-lg border border-purple-100 dark:border-neutral-700">
-                            <span className="text-sm font-semibold text-purple-700 dark:text-white uppercase tracking-wider">{vocab.part_of_speech}</span>
-                            <span className="text-purple-300">•</span>
-                            <span className="text-sm font-bold text-purple-700 dark:text-white">{vocab.level}</span>
-                          </div>
-                          
-                          <div className="space-y-6">
-                            <div>
-                              <h3 className="font-semibold text-gray-500 dark:text-neutral-400 text-xs uppercase tracking-wider mb-2 dark:text-neutral-400">Ý nghĩa</h3>
-                              <p className="text-gray-900 dark:text-white font-medium text-lg first-letter:uppercase">{vocab.meaning_vi}</p>
-                              <p className="text-sm text-gray-500 dark:text-neutral-400 italic mt-1 bg-gray-50 p-2 rounded border border-gray-100 dark:text-neutral-400 dark:bg-[#0a0a0a] dark:border-neutral-800">Ngữ cảnh: {vocab.context_meaning_vi}</p>
-                            </div>
-
-                            {vocab.usage_note_vi && (
-                              <div>
-                                <h3 className="font-semibold text-gray-500 dark:text-neutral-400 text-xs uppercase tracking-wider mb-2 dark:text-neutral-400">Cách dùng</h3>
-                                <p className="text-gray-700 dark:text-neutral-200 leading-relaxed dark:text-neutral-200">{vocab.usage_note_vi}</p>
-                              </div>
-                            )}
-
-                            <div>
-                              <h3 className="font-semibold text-gray-500 dark:text-neutral-400 text-xs uppercase tracking-wider mb-3 dark:text-neutral-400">Ví dụ</h3>
-                              <div className="bg-purple-50/70 dark:bg-neutral-900 p-4 rounded-xl border border-purple-100 dark:border-neutral-700 mb-3 shadow-sm">
-                                <p className="font-medium text-gray-900 dark:text-white text-[15px] leading-relaxed">"{vocab.original_sentence}"</p>
-                                <p className="text-gray-600 dark:text-neutral-300 italic mt-2 text-sm dark:text-neutral-300">{vocab.sentence_translation_vi}</p>
-                              </div>
-                              {vocab.examples && vocab.examples.map((ex: any, i: number) => (
-                                <div key={i} className="pl-3 mt-3 border-l-2 border-purple-200 dark:border-neutral-700">
-                                  <p className="text-gray-800 dark:text-neutral-100 text-sm font-medium dark:text-neutral-100">{ex.sentence}</p>
-                                  <p className="text-gray-500 dark:text-neutral-400 italic text-sm mt-1 dark:text-neutral-400">{ex.translationVi}</p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 ))}
                 {filteredVocabulary.filter(v => v.term.trim().includes(' ')).length === 0 && (
@@ -397,7 +231,7 @@ export default function VideoWorkspaceClient({ videoUrl, vocabulary, grammar = [
                 {grammar.map((item, index) => (
                   <div key={item.id} className="relative" style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'both' }}>
                     <div 
-                      className={`p-5 rounded-xl border-2 cursor-pointer transition-all duration-200 h-full flex flex-col justify-between ${selectedGrammar?.id === item.id ? 'opacity-0' : 'border-gray-200 hover:border-purple-400 hover:shadow-lg bg-white dark:bg-[#0a0a0a]'} dark:bg-[#0a0a0a]`}
+                      className={`p-5 rounded-xl border-2 cursor-pointer transition-all duration-200 h-full flex flex-col justify-between border-gray-200 hover:border-purple-400 hover:shadow-lg bg-white dark:bg-[#0a0a0a]`}
                       onClick={() => setSelectedGrammar(item)}
                     >
                       <div>
@@ -413,74 +247,6 @@ export default function VideoWorkspaceClient({ videoUrl, vocabulary, grammar = [
                       </div>
                     </div>
 
-                    {/* Popover for Grammar (Fixed Modal) */}
-                    {selectedGrammar?.id === item.id && (
-                      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-                        <div className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm transition-opacity" onClick={(e) => { e.stopPropagation(); setSelectedGrammar(null); }}></div>
-                        
-                        <div className="relative bg-white dark:bg-[#0a0a0a] p-6 sm:p-8 rounded-2xl shadow-2xl border border-purple-200 dark:border-neutral-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 fade-in duration-200 dark:bg-[#0a0a0a]">
-                          <div className="sticky top-0 z-10 bg-white dark:bg-[#0a0a0a] flex justify-between items-start mb-6 pb-4 pt-6 sm:pt-8 -mt-6 sm:-mt-8 -mx-6 sm:-mx-8 px-6 sm:px-8 border-b border-gray-100 dark:border-neutral-800">
-                            <div className="pr-4">
-                              <h2 className="text-2xl sm:text-3xl font-bold text-purple-800 dark:text-white capitalize leading-tight">
-                                {item.grammar_pattern}
-                              </h2>
-                              <div className="text-sm font-semibold text-purple-700 dark:text-white mt-2 bg-purple-50 dark:bg-neutral-800 inline-block px-3 py-1 rounded-lg border border-purple-100 dark:border-neutral-700">Cấp độ {item.level || "N/A"}</div>
-                            </div>
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); setSelectedGrammar(null); }}
-                              className="text-gray-400 hover:text-gray-900 dark:text-white p-2 rounded-full hover:bg-gray-100 bg-gray-50 shrink-0 transition-colors dark:text-neutral-400 dark:bg-[#0a0a0a]"
-                            >
-                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                          </div>
-                          
-                          <div className="space-y-6">
-                            <div>
-                              <h3 className="font-bold text-gray-500 dark:text-neutral-400 text-xs uppercase tracking-wider mb-2 dark:text-neutral-400">Ý nghĩa</h3>
-                              <p className="text-gray-900 dark:text-white font-medium text-lg first-letter:uppercase">{item.meaning_vi}</p>
-                            </div>
-
-                            {item.explanation_vi && (
-                              <div>
-                                <h3 className="font-bold text-gray-500 dark:text-neutral-400 text-xs uppercase tracking-wider mb-2 dark:text-neutral-400">Cách dùng (Giải thích)</h3>
-                                <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 dark:border-neutral-700 dark:bg-[#0a0a0a] dark:border-neutral-700">
-                                  <p className="text-gray-800 dark:text-neutral-100 leading-relaxed whitespace-pre-line dark:text-neutral-100">{item.explanation_vi}</p>
-                                </div>
-                              </div>
-                            )}
-
-                            <div>
-                              <h3 className="font-bold text-gray-500 dark:text-neutral-400 text-xs uppercase tracking-wider mb-3 dark:text-neutral-400">Ví dụ trong Video</h3>
-                              <div className="bg-purple-50 dark:bg-neutral-800 p-5 rounded-xl border border-purple-200 dark:border-neutral-700 mb-5 shadow-sm">
-                                <p className="font-medium text-purple-900 dark:text-white text-[15px] leading-relaxed">"{item.original_sentence}"</p>
-                                <p className="text-purple-700 dark:text-neutral-300 italic mt-2 text-sm">{item.sentence_translation_vi}</p>
-                                <button 
-                                  className="p-1.5 sm:p-2 rounded-full hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors shrink-0 text-slate-500 dark:text-neutral-400"
-                                  onClick={(e) => playAudio(e, item.original_sentence, targetLanguage)}
-                                  title="Nghe phát âm"
-                                >
-                                  <Volume2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                              
-                              {item.examples && item.examples.length > 0 && (
-                                <div>
-                                  <h4 className="font-semibold text-gray-500 dark:text-neutral-400 text-xs uppercase tracking-wider mb-3 dark:text-neutral-400">Ví dụ bổ sung</h4>
-                                  <div className="space-y-4">
-                                    {item.examples.map((ex: any, i: number) => (
-                                      <div key={i} className="pl-4 border-l-2 border-purple-300 dark:border-neutral-600">
-                                        <p className="text-gray-800 dark:text-neutral-100 font-medium text-[15px] dark:text-neutral-100">{ex.sentence}</p>
-                                        <p className="text-gray-500 dark:text-neutral-400 italic text-sm mt-1 dark:text-neutral-400">{ex.translationVi}</p>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
@@ -489,8 +255,165 @@ export default function VideoWorkspaceClient({ videoUrl, vocabulary, grammar = [
         </div>
       )}
       </div>
+
+      {/* Vocab Details Modal */}
+      {selectedVocab && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-neutral-900/40 backdrop-blur-sm" onClick={() => setSelectedVocab(null)}>
+          <div 
+            className="relative bg-white dark:bg-[#0a0a0a] rounded-2xl shadow-2xl border border-gray-200 dark:border-neutral-700 w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 fade-in duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex justify-between items-start p-6 sm:p-8 border-b border-gray-100 dark:border-neutral-800 bg-white dark:bg-[#0a0a0a] z-10 shrink-0">
+              <div>
+                <div className="flex items-center gap-3">
+                  <h2 className="text-2xl sm:text-3xl font-bold text-blue-700 dark:text-white capitalize leading-tight">
+                    {selectedVocab.term}
+                  </h2>
+                  <button 
+                    onClick={(e) => playAudio(e, selectedVocab.term, targetLanguage)}
+                    className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center hover:bg-slate-200 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700 transition-colors shadow-sm mt-1"
+                    title="Phát âm"
+                  >
+                    <Volume2 className="w-4 h-4" />
+                  </button>
+                </div>
+                <span className="text-gray-500 dark:text-neutral-400 text-base font-normal mt-1 block normal-case font-pronunciation">{selectedVocab.pronunciation}</span>
+              </div>
+              
+              <div className="flex items-start gap-2">
+                <div className="flex items-center gap-1 mr-2 hidden sm:flex">
+                  {getDictionaryLinks(selectedVocab.term, targetLanguage).map((dict, i) => (
+                    <a 
+                      key={i}
+                      href={dict.url}
+                      target="_blank" rel="noopener noreferrer"
+                      className="px-3 py-1.5 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 border border-slate-200 dark:border-neutral-700"
+                    >
+                      {dict.name} <ExternalLink className="w-3 h-3" />
+                    </a>
+                  ))}
+                </div>
+                <button 
+                  onClick={() => setSelectedVocab(null)}
+                  className="text-gray-400 hover:text-gray-900 dark:text-white p-2 rounded-full hover:bg-gray-100 bg-gray-50 transition-colors shrink-0 dark:bg-neutral-900"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 sm:p-8 overflow-y-auto space-y-6 flex-1">
+              <div className="inline-flex items-center gap-2 mb-2 bg-blue-50 dark:bg-neutral-800 px-3 py-1.5 rounded-lg border border-blue-100 dark:border-neutral-700">
+                <span className="text-sm font-semibold text-blue-700 dark:text-white uppercase tracking-wider">{selectedVocab.part_of_speech}</span>
+                <span className="text-blue-300">•</span>
+                <span className="text-sm font-bold text-blue-700 dark:text-white">{selectedVocab.level}</span>
+              </div>
+              
+              <div>
+                <h3 className="font-semibold text-gray-500 dark:text-neutral-400 text-xs uppercase tracking-wider mb-2">Ý nghĩa</h3>
+                <p className="text-gray-900 dark:text-white font-medium text-lg first-letter:uppercase">{selectedVocab.meaning_vi}</p>
+                <p className="text-sm text-gray-500 dark:text-neutral-400 italic mt-1 bg-gray-50 p-2 rounded border border-gray-100 dark:bg-[#0a0a0a] dark:border-neutral-800">Ngữ cảnh: {selectedVocab.context_meaning_vi}</p>
+              </div>
+
+              {selectedVocab.usage_note_vi && (
+                <div>
+                  <h3 className="font-semibold text-gray-500 dark:text-neutral-400 text-xs uppercase tracking-wider mb-2">Cách dùng</h3>
+                  <p className="text-gray-700 dark:text-neutral-200 leading-relaxed">{selectedVocab.usage_note_vi}</p>
+                </div>
+              )}
+
+              <div>
+                <h3 className="font-semibold text-gray-500 dark:text-neutral-400 text-xs uppercase tracking-wider mb-3">Ví dụ</h3>
+                <div className="bg-blue-50/70 dark:bg-neutral-900 p-4 rounded-xl border border-blue-100 dark:border-neutral-700 mb-3 shadow-sm">
+                  <p className="font-medium text-gray-900 dark:text-white text-[15px] leading-relaxed">"{selectedVocab.original_sentence}"</p>
+                  <p className="text-gray-600 dark:text-neutral-300 italic mt-2 text-sm">{selectedVocab.sentence_translation_vi}</p>
+                </div>
+                {selectedVocab.examples && selectedVocab.examples.map((ex: any, i: number) => (
+                  <div key={i} className="pl-3 mt-3 border-l-2 border-blue-200 dark:border-neutral-700">
+                    <p className="text-gray-800 dark:text-neutral-100 text-sm font-medium">{ex.sentence}</p>
+                    <p className="text-gray-500 dark:text-neutral-400 italic text-sm mt-1">{ex.translationVi}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Grammar Details Modal */}
+      {selectedGrammar && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-neutral-900/40 backdrop-blur-sm" onClick={() => setSelectedGrammar(null)}>
+          <div 
+            className="relative bg-white dark:bg-[#0a0a0a] rounded-2xl shadow-2xl border border-gray-200 dark:border-neutral-700 w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 fade-in duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start p-6 sm:p-8 border-b border-gray-100 dark:border-neutral-800 bg-white dark:bg-[#0a0a0a] z-10 shrink-0">
+              <div className="pr-8">
+                <h2 className="text-2xl sm:text-3xl font-bold text-purple-700 dark:text-white leading-tight mb-2">
+                  {selectedGrammar.grammar_pattern}
+                </h2>
+                <div className="inline-flex items-center gap-2 bg-purple-50 dark:bg-neutral-800 px-2.5 py-1 rounded-md border border-purple-100 dark:border-neutral-700">
+                  <span className="text-xs font-bold text-purple-700 dark:text-white uppercase tracking-wider">{selectedGrammar.level}</span>
+                </div>
+              </div>
+              
+              <button 
+                onClick={() => setSelectedGrammar(null)}
+                className="text-gray-400 hover:text-gray-900 dark:text-white p-2 rounded-full hover:bg-gray-100 bg-gray-50 transition-colors shrink-0 -mt-2 -mr-2 dark:bg-neutral-900"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            
+            <div className="p-6 sm:p-8 overflow-y-auto space-y-6 flex-1">
+              <div>
+                <h3 className="font-bold text-gray-500 dark:text-neutral-400 text-xs uppercase tracking-wider mb-2">Ý nghĩa</h3>
+                <p className="text-gray-900 dark:text-white font-medium text-lg first-letter:uppercase">{selectedGrammar.meaning_vi}</p>
+              </div>
+
+              {selectedGrammar.explanation_vi && (
+                <div>
+                  <h3 className="font-bold text-gray-500 dark:text-neutral-400 text-xs uppercase tracking-wider mb-2">Cách dùng (Giải thích)</h3>
+                  <p className="text-gray-700 dark:text-neutral-200 leading-relaxed whitespace-pre-wrap">{selectedGrammar.explanation_vi}</p>
+                </div>
+              )}
+
+              <div>
+                <h3 className="font-bold text-gray-500 dark:text-neutral-400 text-xs uppercase tracking-wider mb-3">Ví dụ trong Video</h3>
+                <div className="bg-purple-50 dark:bg-neutral-800 p-5 rounded-xl border border-purple-200 dark:border-neutral-700 mb-5 shadow-sm">
+                  <p className="font-medium text-purple-900 dark:text-white text-[15px] leading-relaxed">"{selectedGrammar.original_sentence}"</p>
+                  <p className="text-purple-700 dark:text-neutral-300 italic mt-2 text-sm">{selectedGrammar.sentence_translation_vi}</p>
+                  <button 
+                    className="p-1.5 sm:p-2 rounded-full hover:bg-slate-100 dark:hover:bg-neutral-700 transition-colors shrink-0 text-slate-500 dark:text-neutral-400 mt-2"
+                    onClick={(e) => playAudio(e, selectedGrammar.original_sentence, targetLanguage)}
+                    title="Nghe phát âm"
+                  >
+                    <Volume2 className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                {selectedGrammar.examples && selectedGrammar.examples.length > 0 && (
+                  <div className="mt-5">
+                    <h4 className="text-sm font-semibold text-gray-600 dark:text-neutral-400 mb-3">Ví dụ bổ sung:</h4>
+                    <div className="space-y-4 pl-1">
+                      {selectedGrammar.examples.map((ex: any, i: number) => (
+                        <div key={i} className="pl-3 border-l-2 border-purple-200 dark:border-neutral-700">
+                          <p className="text-gray-800 dark:text-neutral-100 text-sm font-medium">{ex.sentence}</p>
+                          <p className="text-gray-500 dark:text-neutral-400 italic text-sm mt-1">{ex.translationVi}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
 
-// force rebuild 26

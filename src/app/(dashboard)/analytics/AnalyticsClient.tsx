@@ -3,27 +3,27 @@
 import { Flame, BrainCircuit, CheckCircle2, Target, CalendarDays, BarChart3, Lock } from "lucide-react";
 import Link from "next/link";
 
-export default function AnalyticsClient({ vocabCount }: { vocabCount: number }) {
-  // Generate mock heatmap data for exactly 365 days
-  const today = new Date();
-  const days = Array.from({ length: 365 }).map((_, i) => {
-    const d = new Date(today);
-    d.setDate(d.getDate() - (364 - i));
-    
-    // Khởi tạo intensity = 0 (Không fake data)
-    let intensity = 0;
-    
-    return {
-      date: d,
-      intensity
-    };
-  });
+interface Stats {
+  vocabCount: number;
+  totalLearnedCards: number;
+  masteredCards: number;
+  todayCorrect: number;
+  completedToday: number;
+  currentStreak: number;
+  maxStreak: number;
+  heatmapDays: { date: string, intensity: number, count: number }[];
+  completedShadowingSegments?: number;
+  totalShadowingSegments?: number;
+}
+
+export default function AnalyticsClient({ stats }: { stats: Stats }) {
+  const days = stats.heatmapDays;
 
   const getMonthLabels = () => {
     const labels = [];
     let currentMonth = -1;
     for (let i = 0; i < days.length; i++) {
-      const month = days[i].date.getMonth();
+      const month = new Date(days[i].date).getMonth();
       if (month !== currentMonth && (days.length - i > 15)) { // Don't show label if too close to end
         labels.push({
           label: `Tháng ${month + 1}`,
@@ -76,11 +76,11 @@ export default function AnalyticsClient({ vocabCount }: { vocabCount: number }) 
             <h2 className="text-sm font-bold text-slate-700 dark:text-neutral-300 dark:text-neutral-200">Chuỗi ngày học</h2>
           </div>
           <div className="flex items-baseline gap-2 mb-2">
-            <span className="text-3xl font-bold text-slate-900 dark:text-white">0</span>
+            <span className="text-3xl font-bold text-slate-900 dark:text-white">{stats.currentStreak}</span>
             <span className="text-sm font-semibold text-slate-500 dark:text-neutral-400">ngày</span>
           </div>
           <div className="mt-auto pt-4 border-t border-slate-100 dark:border-neutral-800/60 flex justify-between items-center text-xs font-semibold dark:border-neutral-800">
-            <span className="text-slate-400 dark:text-slate-500 dark:text-neutral-400">Kỷ lục: 1 ngày</span>
+            <span className="text-slate-400 dark:text-slate-500 dark:text-neutral-400">Kỷ lục: {stats.maxStreak} ngày</span>
           </div>
         </div>
 
@@ -93,10 +93,10 @@ export default function AnalyticsClient({ vocabCount }: { vocabCount: number }) 
             <h2 className="text-sm font-bold text-slate-700 dark:text-neutral-300 dark:text-neutral-200">Từ đã thuộc</h2>
           </div>
           <div className="flex items-baseline gap-2 mb-2">
-            <span className="text-3xl font-bold text-slate-900 dark:text-white">0</span>
+            <span className="text-3xl font-bold text-slate-900 dark:text-white">{stats.masteredCards}</span>
           </div>
           <div className="mt-auto pt-4 border-t border-slate-100 dark:border-neutral-800/60 flex justify-between items-center text-xs font-semibold dark:border-neutral-800">
-            <span className="text-slate-400 dark:text-slate-500 dark:text-neutral-400">trên tổng {vocabCount || 333} từ</span>
+            <span className="text-slate-400 dark:text-slate-500 dark:text-neutral-400">trên tổng {stats.vocabCount || 0} từ</span>
           </div>
         </div>
 
@@ -109,10 +109,10 @@ export default function AnalyticsClient({ vocabCount }: { vocabCount: number }) 
             <h2 className="text-sm font-bold text-slate-700 dark:text-neutral-300 dark:text-neutral-200">Bài hoàn thành</h2>
           </div>
           <div className="flex items-baseline gap-2 mb-2">
-            <span className="text-3xl font-bold text-slate-900 dark:text-white">0/15</span>
+            <span className="text-3xl font-bold text-slate-900 dark:text-white">{stats.completedToday}/15</span>
           </div>
           <div className="mt-auto pt-4 border-t border-slate-100 dark:border-neutral-800/60 flex justify-between items-center text-xs font-semibold dark:border-neutral-800">
-            <span className="text-slate-400 dark:text-slate-500 dark:text-neutral-400">Xong khi học đủ 2 chế độ</span>
+            <span className="text-slate-400 dark:text-slate-500 dark:text-neutral-400">Xong khi ôn đủ 15 thẻ hôm nay</span>
           </div>
         </div>
 
@@ -125,7 +125,7 @@ export default function AnalyticsClient({ vocabCount }: { vocabCount: number }) 
             <h2 className="text-sm font-bold text-slate-700 dark:text-neutral-300 dark:text-neutral-200">Hôm nay</h2>
           </div>
           <div className="flex items-baseline gap-2 mb-2">
-            <span className="text-3xl font-bold text-slate-900 dark:text-white">0</span>
+            <span className="text-3xl font-bold text-slate-900 dark:text-white">{stats.todayCorrect}</span>
             <span className="text-sm font-semibold text-slate-500 dark:text-neutral-400">câu</span>
           </div>
           <div className="mt-auto pt-4 border-t border-slate-100 dark:border-neutral-800/60 flex justify-between items-center text-xs font-semibold dark:border-neutral-800">
@@ -187,7 +187,7 @@ export default function AnalyticsClient({ vocabCount }: { vocabCount: number }) 
                         <div 
                           key={dIdx} 
                           className={`w-3 h-3 rounded-[2px] transition-colors ${getColorClass(day.intensity)}`}
-                          title={`${day.date.toLocaleDateString('vi-VN')} - Mức độ: ${day.intensity}`}
+                          title={`${new Date(day.date).toLocaleDateString('vi-VN')} - Mức độ: ${day.intensity}`}
                         ></div>
                       ))}
                     </div>
@@ -220,23 +220,31 @@ export default function AnalyticsClient({ vocabCount }: { vocabCount: number }) 
             <div className="bg-slate-50 dark:bg-neutral-900/50 p-4 rounded-xl border border-slate-100 dark:border-neutral-800 dark:bg-[#0a0a0a]">
               <div className="flex justify-between items-end mb-2">
                 <span className="text-sm font-bold text-slate-700 dark:text-neutral-300 dark:text-neutral-200">Từ vựng</span>
-                <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">0/{vocabCount || 333} từ · 0%</span>
+                <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">
+                  {stats.totalLearnedCards}/{stats.vocabCount || 0} từ · {stats.vocabCount ? Math.round((stats.totalLearnedCards / stats.vocabCount) * 100) : 0}%
+                </span>
               </div>
               <div className="w-full bg-slate-200 dark:bg-neutral-900 rounded-full h-2 dark:bg-neutral-800">
-                <div className="bg-indigo-500 h-2 rounded-full" style={{ width: '0%' }}></div>
+                <div 
+                  className="bg-indigo-500 h-2 rounded-full transition-all duration-1000 ease-out" 
+                  style={{ width: `${stats.vocabCount ? Math.min(100, Math.round((stats.totalLearnedCards / stats.vocabCount) * 100)) : 0}%` }}
+                ></div>
               </div>
             </div>
 
             {/* Category: Shadowing */}
             <div className="bg-slate-50 dark:bg-neutral-900/50 p-4 rounded-xl border border-slate-100 dark:border-neutral-800 dark:bg-[#0a0a0a]">
-              <div className="flex justify-between items-center mb-2">
+              <div className="flex justify-between items-end mb-2">
                 <span className="text-sm font-bold text-slate-700 dark:text-neutral-300 dark:text-neutral-200">Shadowing</span>
-                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded flex items-center gap-1 border border-emerald-100 dark:border-emerald-800/50">
-                  <Lock className="w-3 h-3" /> Sắp ra mắt
+                <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">
+                  {stats.completedShadowingSegments || 0}/{stats.totalShadowingSegments || 0} câu · {stats.totalShadowingSegments ? Math.round(((stats.completedShadowingSegments || 0) / stats.totalShadowingSegments) * 100) : 0}%
                 </span>
               </div>
               <div className="w-full bg-slate-200 dark:bg-neutral-900 rounded-full h-2 dark:bg-neutral-800">
-                <div className="bg-slate-300 dark:bg-neutral-700 h-2 rounded-full" style={{ width: '0%' }}></div>
+                <div 
+                  className="bg-sky-500 h-2 rounded-full transition-all duration-1000 ease-out" 
+                  style={{ width: `${stats.totalShadowingSegments ? Math.min(100, Math.round(((stats.completedShadowingSegments || 0) / stats.totalShadowingSegments) * 100)) : 0}%` }}
+                ></div>
               </div>
             </div>
 

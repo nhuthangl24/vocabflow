@@ -46,8 +46,11 @@ export const ExtractorResponseSchema = z.object({
 export type ExtractorResponse = z.infer<typeof ExtractorResponseSchema>;
 export type VocabularyItem = z.infer<typeof VocabularyItemSchema>;
 
-export async function extractVocabulary(transcript: string, settings: any): Promise<ExtractorResponse> {
+export async function extractVocabulary(rawTranscript: string, settings: any): Promise<ExtractorResponse> {
   const provider = getProvider();
+  
+  // Clean up common transcript artifacts (like >>, >>>)
+  const transcript = rawTranscript.replace(/>+/g, '').trim();
   
   const systemPrompt = `Bạn là chuyên gia giảng dạy ngôn ngữ.
 Nhiệm vụ của bạn là phân tích đoạn transcript và trích xuất danh sách từ vựng/cụm từ/idioms hữu ích cho người học tiếng ${settings.targetLanguage || 'Anh'}.

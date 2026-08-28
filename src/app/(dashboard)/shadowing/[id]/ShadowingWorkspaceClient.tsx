@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect, useMemo } from "react";
 import YouTube, { YouTubeProps } from "react-youtube";
 import { Play, Pause, SkipBack, SkipForward, RotateCcw, Check, Eye, EyeOff, Lightbulb, CheckCircle, XCircle } from "lucide-react";
+import { saveShadowingProgress } from "@/app/actions/shadowing";
 
 
 // Simple LCS Diff for word/character level highlighting
@@ -47,7 +48,7 @@ function computeDiff(original: string, input: string) {
 
 const YOUTUBE_OPTS = { width: '100%', height: '100%', playerVars: { autoplay: 0, rel: 0 } };
 
-export default function ShadowingWorkspaceClient({ videoUrl, transcript = [] }: { videoUrl: string, transcript: any[] }) {
+export default function ShadowingWorkspaceClient({ assetId, videoUrl, transcript = [] }: { assetId: string, videoUrl: string, transcript: any[] }) {
   const [player, setPlayer] = useState<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -88,6 +89,14 @@ export default function ShadowingWorkspaceClient({ videoUrl, transcript = [] }: 
 
   const currentSegment = currentIndex >= 0 ? transcript[currentIndex] : null;
 
+  const dictationIndexRef = useRef<number>(currentIndex);
+
+  useEffect(() => {
+    if (activeTab === "dictation") {
+      dictationIndexRef.current = currentIndex;
+    }
+  }, [activeTab]); // intentionally omitting currentIndex so it locks the segment when entering dictation
+
   useEffect(() => {
     let interval: any;
     if (isPlaying && player && videoId) {
@@ -97,13 +106,16 @@ export default function ShadowingWorkspaceClient({ videoUrl, transcript = [] }: 
           setCurrentTime(time);
           if (!duration) setDuration(await player.getDuration());
           
-          if (activeTab === "dictation" && currentSegment) {
-            const endTime = currentSegment.end_time_ms / 1000;
-            if (time >= endTime) {
-              player.pauseVideo();
-              setIsPlaying(false);
-              player.seekTo(endTime - 0.05, true);
-              setCurrentTime(endTime - 0.05);
+          if (activeTab === "dictation") {
+            const targetSegment = transcript[dictationIndexRef.current];
+            if (targetSegment) {
+              const endTime = targetSegment.end_time_ms / 1000;
+              if (time >= endTime) {
+                player.pauseVideo();
+                setIsPlaying(false);
+                player.seekTo(endTime - 0.05, true);
+                setCurrentTime(endTime - 0.05);
+              }
             }
           }
         } catch (e) {}
@@ -114,13 +126,16 @@ export default function ShadowingWorkspaceClient({ videoUrl, transcript = [] }: 
         setCurrentTime(time);
         if (!duration && videoRef.current!.duration) setDuration(videoRef.current!.duration);
 
-        if (activeTab === "dictation" && currentSegment) {
-          const endTime = currentSegment.end_time_ms / 1000;
-          if (time >= endTime) {
-            videoRef.current!.pause();
-            setIsPlaying(false);
-            videoRef.current!.currentTime = endTime - 0.05;
-            setCurrentTime(endTime - 0.05);
+        if (activeTab === "dictation") {
+          const targetSegment = transcript[dictationIndexRef.current];
+          if (targetSegment) {
+            const endTime = targetSegment.end_time_ms / 1000;
+            if (time >= endTime) {
+              videoRef.current!.pause();
+              setIsPlaying(false);
+              videoRef.current!.currentTime = endTime - 0.05;
+              setCurrentTime(endTime - 0.05);
+            }
           }
         }
       }, 100);
@@ -174,6 +189,7 @@ export default function ShadowingWorkspaceClient({ videoUrl, transcript = [] }: 
 
   const handleSeek = (index: number) => {
     if (index >= 0 && index < transcript.length) {
+      if (activeTab === "dictation") dictationIndexRef.current = index;
       const seekTime = transcript[index].start_time_ms / 1000;
       setCurrentTime(seekTime);
       performSeek(seekTime);
@@ -220,8 +236,8 @@ export default function ShadowingWorkspaceClient({ videoUrl, transcript = [] }: 
   const handleCheck = () => {
     if (!currentSegment) return;
     
-    // Strict check: keep punctuation, only remove extra whitespace and ignore case
-    const normalize = (str: string) => str.replace(/\s+/g, '').toLowerCase();
+    // Loose check: remove punctuation and whitespace, ignore case
+    const normalize = (str: string) => str.replace(/[^a-zA-Z0-9À-ỹ\u4e00-\u9fa5]/g, '').toLowerCase();
     
     const originalClean = normalize(currentSegment.text);
     const inputClean = normalize(dictations[currentIndex] || "");
@@ -230,6 +246,9 @@ export default function ShadowingWorkspaceClient({ videoUrl, transcript = [] }: 
       setCheckResult({ ...checkResult, [currentIndex]: true });
       setDiffResult({ ...diffResult, [currentIndex]: computeDiff(currentSegment.text, dictations[currentIndex] || "") });
       
+      // Save progress to database
+      saveShadowingProgress(assetId, currentSegment.id).catch(err => console.error("Failed to save progress", err));
+
       // Auto-next if completely correct
       if (currentIndex < transcript.length - 1) {
         setTimeout(() => {
