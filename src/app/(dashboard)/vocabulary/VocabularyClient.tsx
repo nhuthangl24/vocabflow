@@ -161,7 +161,7 @@ export default function VocabularyClient({ items }: { items: VocabularyItem[] })
                   {item.pronunciation && (
                     <button 
                       onClick={(e) => playAudio(e, item.term, (item as any).transcript_jobs?.settings?.targetLanguage || "English")}
-                      className="flex items-center gap-1 text-slate-500 dark:text-neutral-400 hover:text-indigo-600 dark:hover:text-white font-sans transition-colors p-1 -ml-1 rounded-md hover:bg-slate-50 dark:hover:bg-slate-700"
+                      className="flex items-center gap-1 text-slate-500 dark:text-neutral-400 hover:text-indigo-600 dark:hover:text-white font-pronunciation transition-colors p-1 -ml-1 rounded-md hover:bg-slate-50 dark:hover:bg-slate-700"
                       title="Nghe phát âm"
                     >
                       <Volume2 className="w-3 h-3" />
@@ -214,7 +214,7 @@ export default function VocabularyClient({ items }: { items: VocabularyItem[] })
                     </span>
                   )}
                   {selectedItem.pronunciation && (
-                    <span className="flex items-center gap-1.5 text-slate-500 font-sans dark:text-neutral-400">
+                    <span className="flex items-center gap-1.5 text-slate-500 font-pronunciation dark:text-neutral-400">
                       /{selectedItem.pronunciation}/
                     </span>
                   )}

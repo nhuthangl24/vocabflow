@@ -41,13 +41,12 @@ export default async function AdminPlansPage() {
               </div>
             </div>
             <div className="p-5 bg-slate-50 dark:bg-white/5 flex-1 rounded-b-xl">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Giới hạn tính năng</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Giới hạn tính năng & Đặc quyền</h3>
               <ul className="space-y-2 text-sm text-slate-700 dark:text-neutral-300">
-                <li className="flex justify-between"><span>Số video/tháng:</span> <span className="font-medium">{plan.monthly_video_count}</span></li>
-                <li className="flex justify-between"><span>Phút/tháng:</span> <span className="font-medium">{plan.monthly_transcription_minutes}</span></li>
-                <li className="flex justify-between"><span>Từ vựng/video:</span> <span className="font-medium">{plan.max_vocabulary_per_video}</span></li>
-                <li className="flex justify-between"><span>Số bộ từ (decks):</span> <span className="font-medium">{plan.max_decks}</span></li>
-                <li className="flex justify-between"><span>Dung lượng upload:</span> <span className="font-medium">{plan.max_upload_bytes / 1024 / 1024} MB</span></li>
+                <li className="flex justify-between"><span>Số video xử lý / ngày:</span> <span className="font-medium">{plan.daily_video_limit === 0 ? "Không giới hạn" : plan.daily_video_limit}</span></li>
+                <li className="flex justify-between"><span>Độ dài tối đa 1 video:</span> <span className="font-medium">{plan.max_video_duration_minutes === 0 ? "Không giới hạn" : `${plan.max_video_duration_minutes} phút`}</span></li>
+                <li className="flex justify-between"><span>Phòng Shadowing:</span> <span className="font-medium">{plan.enable_shadowing ? "Bật" : "Tắt"}</span></li>
+                <li className="flex justify-between"><span>Khuyên dùng:</span> <span className="font-medium">{plan.is_recommended ? "Có" : "Không"}</span></li>
               </ul>
             </div>
           </div>

@@ -12,12 +12,14 @@ export default function InlineUploadBanner({
   userId, 
   isPro = false,
   todayCount = 0,
-  dailyLimit = 2
+  dailyLimit = 2,
+  module = 'vocabulary'
 }: { 
   userId: string, 
   isPro?: boolean,
   todayCount?: number,
-  dailyLimit?: number
+  dailyLimit?: number,
+  module?: 'vocabulary' | 'shadowing'
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -89,7 +91,7 @@ export default function InlineUploadBanner({
       return;
     }
     
-    if (activeTab === 'youtube' && hasManualCaptions === false && !acceptWarning) {
+    if (module === 'shadowing' && activeTab === 'youtube' && hasManualCaptions === false && !acceptWarning) {
       setError("Vui lòng xác nhận đồng ý tiếp tục dù video không có phụ đề chuẩn.");
       return;
     }
@@ -108,7 +110,8 @@ export default function InlineUploadBanner({
           storagePath: "", 
           sizeBytes: 0,
           sourceUrl: youtubeUrl,
-          settings: { targetLanguage, targetCount: targetCount || 35, module: 'vocabulary' }
+          settings: { targetLanguage, targetCount: targetCount || 35, module },
+          module: module
         });
       } else {
         // Fallback for upload via hidden file input (handled by standard click)
@@ -135,7 +138,8 @@ export default function InlineUploadBanner({
           type,
           storagePath: uploadData.path,
           sizeBytes: file.size,
-          settings: { targetLanguage, targetCount: targetCount || 35, module: 'vocabulary' }
+          settings: { targetLanguage, targetCount: targetCount || 35, module },
+          module: module
         });
       }
 
@@ -241,32 +245,36 @@ export default function InlineUploadBanner({
                   )}
                 </select>
 
-                {isPro ? (
-                  <div className="relative flex-1 sm:w-32 sm:flex-none">
-                    <input
-                      type="number"
-                      min={35}
-                      max={100}
-                      value={targetCount === "" ? "" : targetCount}
-                      onChange={(e) => setTargetCount(e.target.value === "" ? "" : Number(e.target.value))}
-                      placeholder="Số từ"
-                      title="Số lượng từ vựng"
-                      className="h-11 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg px-3 text-sm font-medium text-slate-700 dark:text-neutral-300 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm w-full dark:text-neutral-200"
-                    />
-                  </div>
-                ) : (
-                  <div className="h-11 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 rounded-lg px-3 text-sm font-medium text-slate-400 dark:text-neutral-500 flex items-center justify-center sm:justify-start shadow-sm flex-1 sm:w-32 sm:flex-none cursor-not-allowed relative group dark:text-neutral-400 dark:bg-[#0a0a0a]">
-                    <span>35 từ vựng</span>
-                    <div className="absolute hidden group-hover:block bottom-full left-1/2 -translate-x-1/2 mb-2 w-max bg-neutral-900 text-white text-[10px] py-1 px-2 rounded">
-                      Lên Pro để chọn số lượng
-                    </div>
-                  </div>
+                {module === 'vocabulary' && (
+                  <>
+                    {isPro ? (
+                      <div className="relative">
+                        <input 
+                          type="number" 
+                          placeholder="35 từ vựng" 
+                          min="5"
+                          max="100"
+                          value={targetCount}
+                          onChange={(e) => setTargetCount(e.target.value === "" ? "" : Number(e.target.value))}
+                          className="h-11 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg px-3 text-sm font-medium text-slate-700 dark:text-neutral-300 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm w-full sm:w-32 dark:text-neutral-200"
+                          disabled={uploading}
+                        />
+                      </div>
+                    ) : (
+                      <div className="h-11 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 rounded-lg px-3 text-sm font-medium text-slate-400 dark:text-neutral-500 flex items-center justify-center sm:justify-start shadow-sm flex-1 sm:w-32 sm:flex-none cursor-not-allowed relative group dark:text-neutral-400 dark:bg-[#0a0a0a]">
+                        <span>35 từ vựng</span>
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-800 text-white text-xs p-2 rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all text-center z-10 pointer-events-none">
+                          Nâng cấp PRO để tuỳ chỉnh số lượng từ vựng
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
               <button
                 type="submit"
-                disabled={uploading || isFetchingCaptions || (hasManualCaptions === false && !acceptWarning)}
+                disabled={uploading || isFetchingCaptions || (module === 'shadowing' && hasManualCaptions === false && !acceptWarning)}
                 className="h-11 px-6 bg-neutral-900 text-white font-bold text-sm rounded-lg hover:bg-neutral-800 transition-all shadow-sm hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2 w-full sm:w-auto shrink-0"
               >
                 {uploading && (
@@ -277,7 +285,7 @@ export default function InlineUploadBanner({
             </div>
             
             {/* Missing CC Warning */}
-            {activeTab === 'youtube' && hasManualCaptions === false && !isFetchingCaptions && (
+            {module === 'shadowing' && activeTab === 'youtube' && hasManualCaptions === false && !isFetchingCaptions && (
               <div className="mt-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-lg p-3 flex gap-3">
                 <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                 <div className="flex flex-col gap-1.5">

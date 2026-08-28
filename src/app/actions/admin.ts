@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 
 // Verify admin status
 async function checkAdmin() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return false;
   
@@ -19,7 +19,7 @@ async function checkAdmin() {
 export async function createPlaylist(title: string, description: string, thumbnailUrl: string = "") {
   if (!(await checkAdmin())) throw new Error("Unauthorized");
   
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("playlists")
     .insert([{ title, description, thumbnail_url: thumbnailUrl }])
@@ -35,7 +35,15 @@ export async function createPlaylist(title: string, description: string, thumbna
 export async function deletePlaylist(id: string) {
   if (!(await checkAdmin())) throw new Error("Unauthorized");
   
-  const supabase = createClient();
+  const supabase = await createClient();
+  
+  // Xóa tất cả các video thuộc playlist này trước
+  await supabase
+    .from("media_assets")
+    .delete()
+    .eq("playlist_id", id);
+
+  // Xóa playlist
   const { error } = await supabase
     .from("playlists")
     .delete()
@@ -47,7 +55,7 @@ export async function deletePlaylist(id: string) {
 }
 
 export async function getPlaylists() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("playlists")
     .select("*")
@@ -58,33 +66,62 @@ export async function getPlaylists() {
 }
 
 export async function createAdminMediaJob(params: {
-  title: string;
+  title?: string;
   sourceUrl: string;
   targetLanguage: string;
   playlistId?: string;
+  module?: string;
 }) {
   if (!(await checkAdmin())) throw new Error("Unauthorized");
   
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
+
+  // Auto-fetch YouTube title if not explicitly provided or if it's a generic "Video X"
+  let finalTitle = params.title || "Admin Video";
+  let thumbnailUrl = "";
+  if (params.sourceUrl.includes('youtu')) {
+    try {
+      const htmlRes = await fetch(params.sourceUrl, { headers: { 'User-Agent': 'Mozilla/5.0' }, next: { revalidate: 3600 } });
+      const html = await htmlRes.text();
+      const titleMatch = html.match(/<title>(.*?)<\/title>/);
+      if (titleMatch && titleMatch[1]) {
+        finalTitle = titleMatch[1].replace(' - YouTube', '').replace('YouTube', '').trim();
+      }
+      // Extract video ID for thumbnail
+      const match = params.sourceUrl.match(/(?:v=|youtu\.be\/)([^&?]+)/);
+      if (match && match[1]) {
+        thumbnailUrl = `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`;
+      }
+    } catch(e) {}
+  }
 
   // Create a media asset but mark it public
   const { data: asset, error: assetError } = await supabase
     .from("media_assets")
     .insert([{
       user_id: user.id,
-      title: params.title || "Admin Video",
+      title: finalTitle,
       type: "youtube",
       source_url: params.sourceUrl,
       status: "pending",
       is_public: true,
-      playlist_id: params.playlistId || null
+      playlist_id: params.playlistId || null,
+      module: params.module || 'vocabulary'
     }])
     .select()
     .single();
 
   if (assetError) throw assetError;
+
+  // Auto-update playlist thumbnail if it doesn't have one
+  if (params.playlistId && thumbnailUrl) {
+    const { data: pl } = await supabase.from("playlists").select("thumbnail_url").eq("id", params.playlistId).single();
+    if (pl && !pl.thumbnail_url) {
+      await supabase.from("playlists").update({ thumbnail_url: thumbnailUrl }).eq("id", params.playlistId);
+    }
+  }
 
   // Create a transcript job
   const { data: job, error: jobError } = await supabase
@@ -95,7 +132,8 @@ export async function createAdminMediaJob(params: {
       status: "queued",
       settings: {
         targetLanguage: params.targetLanguage,
-        targetVocabularyCount: 35
+        targetVocabularyCount: 35,
+        module: params.module || 'vocabulary'
       }
     }])
     .select()

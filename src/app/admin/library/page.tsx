@@ -17,6 +17,7 @@ export default function AdminPage() {
   // Batch Upload
   const [urls, setUrls] = useState("");
   const [targetLanguage, setTargetLanguage] = useState("English");
+  const [targetModule, setTargetModule] = useState("vocabulary");
   const [selectedPlaylistId, setSelectedPlaylistId] = useState("");
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -52,7 +53,7 @@ export default function AdminPage() {
   };
 
   const handleDeletePlaylist = async (id: string) => {
-    if (!confirm("Xóa playlist này? Các video bên trong sẽ trở thành video lẻ công khai.")) return;
+    if (!confirm("CẢNH BÁO: Bạn có chắc chắn muốn xóa playlist này? TOÀN BỘ các video bên trong playlist cũng sẽ bị xóa sạch!")) return;
     try {
       await deletePlaylist(id);
       fetchPlaylists();
@@ -65,7 +66,7 @@ export default function AdminPage() {
     const list = urls.split('\n').map(u => u.trim()).filter(u => u.length > 10);
     if (list.length === 0) return;
     
-    if (!confirm(`Bạn sắp tải lên ${list.length} video. Quá trình này có thể mất thời gian. Tiếp tục?`)) return;
+    if (!confirm(`Bạn sắp tải lên ${list.length} video vào phòng ${targetModule === 'vocabulary' ? 'Từ vựng' : 'Shadowing'}. Tiếp tục?`)) return;
 
     setUploading(true);
     setTotalUploads(list.length);
@@ -78,10 +79,10 @@ export default function AdminPage() {
       
       try {
         await createAdminMediaJob({
-          title: "Video " + (i+1),
           sourceUrl: url,
           targetLanguage,
-          playlistId: selectedPlaylistId || undefined
+          playlistId: selectedPlaylistId || undefined,
+          module: targetModule
         });
         setProgress(i + 1);
         setLogs(prev => [...prev, `✅ Thành công: ${url}`]);
@@ -124,8 +125,8 @@ export default function AdminPage() {
             />
           </div>
 
-          <div className="flex gap-4">
-            <div className="flex-1">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
               <label className="block text-sm font-medium mb-1">Playlist (Tùy chọn)</label>
               <select 
                 className="w-full rounded-lg border-gray-300 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800 p-3 text-sm outline-none"
@@ -139,7 +140,7 @@ export default function AdminPage() {
                 ))}
               </select>
             </div>
-            <div className="flex-1">
+            <div>
               <label className="block text-sm font-medium mb-1">Ngôn ngữ đích</label>
               <select 
                 className="w-full rounded-lg border-gray-300 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800 p-3 text-sm outline-none"
@@ -147,10 +148,22 @@ export default function AdminPage() {
                 onChange={e => setTargetLanguage(e.target.value)}
                 disabled={uploading}
               >
-                <option value="English">English</option>
-                <option value="Chinese">Chinese</option>
-                <option value="Japanese">Japanese</option>
-                <option value="Korean">Korean</option>
+                <option value="English">Tiếng Anh</option>
+                <option value="Chinese">Tiếng Trung</option>
+                <option value="Japanese">Tiếng Nhật</option>
+                <option value="Korean">Tiếng Hàn</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Phòng đích</label>
+              <select 
+                className="w-full rounded-lg border-gray-300 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800 p-3 text-sm outline-none"
+                value={targetModule}
+                onChange={e => setTargetModule(e.target.value)}
+                disabled={uploading}
+              >
+                <option value="vocabulary">Phòng Từ Vựng</option>
+                <option value="shadowing">Phòng Shadowing</option>
               </select>
             </div>
           </div>

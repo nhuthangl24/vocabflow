@@ -229,9 +229,10 @@ async function processJob(jobId: string) {
           const { extractVocabulary } = await import("@/lib/ai/extractor");
           const fullTranscript = allSegments.map(s => s.text).join(" ");
           
-          // MVP Fake Plan Logic
-          const userPlan: string = "free"; 
-          const MAX_ALLOWED = userPlan === "pro" ? 50 : 35;
+          // Fetch real user plan to determine limits
+          const { data: userData } = await supabase.auth.admin.getUserById(job.user_id);
+          const isPro = userData?.user?.user_metadata?.plan === 'pro';
+          const MAX_ALLOWED = isPro ? 100 : 35;
           
           const requestedCount = job.settings?.targetCount ? Number(job.settings.targetCount) : 35;
           const MAX_WORDS = Math.min(requestedCount, MAX_ALLOWED);
@@ -258,25 +259,21 @@ async function processJob(jobId: string) {
       
           const wordsPerChunk = Math.ceil(MAX_WORDS / transcriptChunks.length);
           const chunkSettings = { ...job.settings, targetCount: wordsPerChunk };
-      
           let allVocabItems: any[] = [];
-          
-          const batchSize = 5;
-          for (let i = 0; i < transcriptChunks.length; i += batchSize) {
-            const batch = transcriptChunks.slice(i, i + batchSize);
-            const batchPromises = batch.map(async (tChunk) => {
-              try {
-                const extraction = await extractVocabulary(tChunk, chunkSettings);
-                return extraction?.items || [];
-              } catch (e) {
-                console.error("Failed to extract vocab for a chunk", e);
-                return [];
-              }
-            });
             
-            const batchResults = await Promise.all(batchPromises);
-            allVocabItems = allVocabItems.concat(batchResults.flat());
-          }
+            // Process chunks sequentially to avoid Groq rate limits (429)
+            for (let i = 0; i < transcriptChunks.length; i++) {
+              try {
+                const extraction = await extractVocabulary(transcriptChunks[i], chunkSettings);
+                allVocabItems = allVocabItems.concat(extraction?.items || []);
+                // Optional small delay between chunks to respect rate limits
+                if (i < transcriptChunks.length - 1) {
+                  await new Promise(resolve => setTimeout(resolve, 1500));
+                }
+              } catch (e) {
+                console.error("Failed to extract vocab for chunk", i, e);
+              }
+            }
       
           allVocabItems = allVocabItems.slice(0, MAX_WORDS);
       

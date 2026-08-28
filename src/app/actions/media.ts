@@ -9,6 +9,7 @@ export async function createMediaJob(data: {
   sizeBytes: number;
   sourceUrl?: string;
   settings?: any;
+  module?: string;
 }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -18,7 +19,7 @@ export async function createMediaJob(data: {
   }
 
   let finalTitle = data.title;
-  // Rate Limiting Logic
+  // Rate Limiting Logic (only for vocabulary AI extraction)
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const { count: todayCount } = await supabase
@@ -26,14 +27,36 @@ export async function createMediaJob(data: {
     .select("*", { count: "exact", head: true })
     .gte("created_at", today.toISOString())
     .neq("status", "failed")
-    .neq("status", "deleted");
+    .neq("status", "deleted")
+    .eq("module", "vocabulary");
 
-  // Check if user is Pro
-  const isPro = user.user_metadata?.plan === 'pro';
-  const dailyLimit = isPro ? 15 : 2;
+  // Fetch user's plan dynamically
+  const userPlanName = (user.user_metadata?.plan || 'free').toUpperCase();
+  const { data: planData } = await supabase.from('plans').select('daily_video_limit, max_video_duration_minutes, enable_shadowing').ilike('name', userPlanName).single();
 
-  if (todayCount && todayCount >= dailyLimit) {
-    throw new Error(`Bạn đã hết lượt xử lý AI hôm nay (${todayCount}/${dailyLimit}). ${!isPro ? 'Hãy nâng cấp Pro để học nhiều hơn!' : ''}`);
+  const adminEmails = process.env.ADMIN_EMAILS?.split(',') || [];
+  const isAdmin = user.email && adminEmails.includes(user.email);
+  
+  let dailyLimit = 2; // Default fallback
+  let maxDurationMinutes = 25; // Default fallback
+  
+  if (planData) {
+    dailyLimit = planData.daily_video_limit === 0 ? 999999 : planData.daily_video_limit;
+    maxDurationMinutes = planData.max_video_duration_minutes === 0 ? 999999 : planData.max_video_duration_minutes;
+  }
+  if (isAdmin) {
+    dailyLimit = 999999;
+    maxDurationMinutes = 999999;
+  }
+
+  // Bỏ qua check limit nếu module là shadowing VÀ gói cước cho phép shadowing (hoặc là admin)
+  const isShadowingModule = data.module === 'shadowing';
+  if (isShadowingModule && !isAdmin && !planData?.enable_shadowing) {
+    throw new Error(`Gói cước hiện tại của bạn không hỗ trợ tính năng Phòng luyện Shadowing. Hãy nâng cấp!`);
+  }
+
+  if (!isAdmin && !isShadowingModule && todayCount !== null && todayCount >= dailyLimit) {
+    throw new Error(`Bạn đã hết lượt xử lý AI hôm nay (${todayCount}/${dailyLimit}). Hãy nâng cấp gói cước để học nhiều hơn!`);
   }
 
   // Auto-fetch YouTube title and check length if user didn't provide one
@@ -48,10 +71,10 @@ export async function createMediaJob(data: {
         
         // Check video length
         const lengthMatch = html.match(/"lengthSeconds":"(\d+)"/);
-        if (lengthMatch) {
+        if (lengthMatch && !isAdmin) {
           const lengthSeconds = parseInt(lengthMatch[1]);
-          if (!isPro && lengthSeconds > 25 * 60) {
-            throw new Error(`Video này dài ${Math.ceil(lengthSeconds / 60)} phút. Gói Cơ Bản (Free) chỉ hỗ trợ tối đa 25 phút/video. Hãy nâng cấp Gói PRO để trích xuất video không giới hạn!`);
+          if (lengthSeconds > maxDurationMinutes * 60) {
+            throw new Error(`Video này dài ${Math.ceil(lengthSeconds / 60)} phút. Gói cước của bạn chỉ hỗ trợ tối đa ${maxDurationMinutes} phút/video. Hãy nâng cấp gói cước!`);
           }
         }
 
@@ -65,7 +88,7 @@ export async function createMediaJob(data: {
         }
       }
     } catch (e: any) {
-      if (e.message.includes("Gói Cơ Bản")) {
+      if (e.message.includes("Video") || e.message.includes("phút")) {
         throw e; // rethrow the limit error so the user sees it
       }
       console.error("Failed to fetch youtube metadata", e);
@@ -83,6 +106,7 @@ export async function createMediaJob(data: {
       size_bytes: data.sizeBytes,
       source_url: data.sourceUrl,
       status: "uploaded",
+      module: data.module || "vocabulary",
     })
     .select()
     .single();

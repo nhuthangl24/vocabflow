@@ -14,32 +14,39 @@ export default async function DashboardPage() {
   let vocabCount = 0;
   let todayCount = 0;
 
-  // Check if user is Pro
+  // Check if user is Admin
+  const adminEmails = process.env.ADMIN_EMAILS?.split(',') || [];
+  const isAdmin = user && user.email && adminEmails.includes(user.email);
   const isPro = user?.user_metadata?.plan === 'pro'; 
-  const dailyLimit = isPro ? 15 : 2;
+
+  // Fetch plan dynamically
+  const userPlanName = (user?.user_metadata?.plan || 'free').toUpperCase();
+  const { data: planData } = await supabase.from('plans').select('daily_video_limit').ilike('name', userPlanName).single();
+  let dailyLimit = isAdmin ? 999999 : 2;
+  if (planData && !isAdmin) {
+    dailyLimit = planData.daily_video_limit === 0 ? 999999 : planData.daily_video_limit;
+  }
 
   if (user) {
-    // Fetch recent media assets
+    // Fetch recent vocabulary media assets (DB-level filter)
     const { data: ma } = await supabase
       .from("media_assets")
       .select("*, transcript_jobs(status, error_message, settings)")
       .neq("status", "deleted")
+      .eq("module", "vocabulary")
       .order("created_at", { ascending: false })
-      .limit(20);
+      .limit(4);
       
     if (ma) {
-      mediaAssets = ma.filter((a: any) => {
-        const jobs = a.transcript_jobs as any[];
-        if (!jobs || jobs.length === 0) return true;
-        return jobs.some((j: any) => !j.settings?.module || j.settings.module === 'vocabulary');
-      }).slice(0, 4);
+      mediaAssets = ma;
     }
 
-    // Fetch total media assets count for stats
+    // Fetch total vocabulary media assets count for stats
     const { count: mc } = await supabase
       .from("media_assets")
       .select("*", { count: "exact", head: true })
-      .neq("status", "deleted");
+      .neq("status", "deleted")
+      .eq("module", "vocabulary");
       
     totalVideosCount = mc || 0;
 
@@ -50,7 +57,7 @@ export default async function DashboardPage() {
       
     vocabCount = vc || 0;
 
-    // Fetch today's video count for rate limiting
+    // Fetch today's video count for rate limiting (only vocabulary AI extraction)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const { count: tc } = await supabase
@@ -58,7 +65,8 @@ export default async function DashboardPage() {
       .select("*", { count: "exact", head: true })
       .gte("created_at", today.toISOString())
       .neq("status", "failed")
-      .neq("status", "deleted");
+      .neq("status", "deleted")
+      .eq("module", "vocabulary");
     
     todayCount = tc || 0;
   }
@@ -142,6 +150,7 @@ export default async function DashboardPage() {
 
 
           {/* AI Usage Card */}
+          {!isAdmin && (
           <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-slate-200 dark:border-neutral-800 p-6 shadow-sm dark:border-neutral-700">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -155,7 +164,9 @@ export default async function DashboardPage() {
             
             <div className="mb-2 flex justify-between items-end">
               <span className="text-2xl font-bold text-slate-900 dark:text-white">{todayCount}<span className="text-sm text-slate-400 ml-1 dark:text-neutral-400">video hôm nay</span></span>
-              <span className="text-sm font-bold text-slate-900 dark:text-neutral-300">tối đa {dailyLimit}</span>
+              <span className="text-sm font-bold text-slate-900 dark:text-neutral-300">
+                {dailyLimit === 999999 ? "Không giới hạn" : `tối đa ${dailyLimit}`}
+              </span>
             </div>
             
             <div className="w-full bg-slate-100 dark:bg-neutral-900 rounded-full h-2 mb-4 overflow-hidden">
@@ -173,7 +184,7 @@ export default async function DashboardPage() {
               </div>
             )}
           </div>
-          
+          )}
 
 
         </div>

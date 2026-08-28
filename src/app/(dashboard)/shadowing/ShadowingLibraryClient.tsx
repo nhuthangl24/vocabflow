@@ -21,14 +21,12 @@ export default function ShadowingLibraryClient({
   const [assets, setAssets] = useState<Asset[]>(initialAssets);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [navigating, setNavigating] = useState<string | null>(null);
 
   const handleDeleteClick = (e: React.MouseEvent, assetId: string) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    if (window.confirm("Bạn có chắc chắn muốn xóa video này khỏi kho Shadowing không?")) {
-      doDelete(assetId);
-    }
+    setConfirmId(assetId);
   };
 
   useEffect(() => {
@@ -100,7 +98,11 @@ export default function ShadowingLibraryClient({
             <Headphones className="w-8 h-8" />
           </div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Chưa có video nào</h2>
-          <p className="text-slate-500 dark:text-neutral-400">Hãy dán link YouTube lên khung phía trên để bắt đầu thêm video vào phòng luyện Shadowing nhé.</p>
+          <p className="text-slate-500 dark:text-neutral-400">
+            {activeTab === "public" 
+              ? "Hiện chưa có video nào được quản trị viên đăng tải trong Kho Video chung."
+              : "Hãy dán link YouTube lên khung phía trên để bắt đầu thêm video vào phòng luyện Shadowing nhé."}
+          </p>
         </div>
       </div>
     );
@@ -162,11 +164,19 @@ export default function ShadowingLibraryClient({
           const asset = item;
           const isProcessing = asset.status !== 'ready' && asset.status !== 'failed';
           const isDeleting = deleting === asset.id;
+          const isNavigating = navigating === asset.id;
         return (
           <div key={asset.id} className="relative group">
             <Link
               href={isProcessing ? "#" : `/shadowing/${asset.id}`}
-              className={`bg-white dark:bg-[#0a0a0a] rounded-2xl border border-slate-200 dark:border-neutral-800 overflow-hidden hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-all duration-300 flex flex-col ${isDeleting ? 'opacity-50 pointer-events-none' : ''}`}
+              onClick={(e) => {
+                if (isProcessing || isDeleting) {
+                  e.preventDefault();
+                  return;
+                }
+                setNavigating(asset.id);
+              }}
+              className={`bg-white dark:bg-[#0a0a0a] rounded-2xl border border-slate-200 dark:border-neutral-800 overflow-hidden hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-all duration-300 flex flex-col ${(isDeleting || isNavigating) ? 'opacity-50 pointer-events-none' : ''}`}
             >
               <div className="aspect-video relative bg-slate-900 overflow-hidden">
                 {(asset.type === 'youtube' && asset.source_url) ? (
@@ -181,13 +191,13 @@ export default function ShadowingLibraryClient({
                   </div>
                 )}
 
-                {isProcessing && (
+                {(isProcessing || isNavigating) && (
                   <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex flex-col items-center justify-center">
                     <svg className="animate-spin h-8 w-8 text-white mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <span className="text-white text-xs font-bold">Đang xử lý...</span>
+                    <span className="text-white text-xs font-bold">{isNavigating ? 'Đang tải...' : 'Đang xử lý...'}</span>
                   </div>
                 )}
 
@@ -246,6 +256,37 @@ export default function ShadowingLibraryClient({
           );
         })}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {confirmId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40 backdrop-blur-sm animate-in fade-in duration-200 p-4" onClick={() => setConfirmId(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 dark:bg-[#0a0a0a]" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-900/30 text-rose-600 flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 mb-2 dark:text-white">Xóa video này?</h3>
+              <p className="text-sm text-slate-500 mb-6 dark:text-neutral-400">
+                Bạn có chắc chắn muốn xóa video này khỏi kho Shadowing không? Hành động này không thể hoàn tác.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setConfirmId(null)}
+                  className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors dark:text-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  onClick={() => doDelete(confirmId)}
+                  className="flex-1 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-medium rounded-lg transition-colors"
+                >
+                  Xóa ngay
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

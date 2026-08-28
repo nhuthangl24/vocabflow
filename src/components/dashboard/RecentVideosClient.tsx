@@ -13,22 +13,18 @@ export default function RecentVideosClient({ initialAssets }: { initialAssets: a
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Poll every 3 seconds to get the latest status
+    // Poll every 3 seconds to get the latest status (vocabulary only)
     const interval = setInterval(async () => {
       const { data } = await supabase
         .from("media_assets")
         .select("*, transcript_jobs(status, error_message)")
         .neq("status", "deleted")
+        .eq("module", "vocabulary")
         .order("created_at", { ascending: false })
-        .limit(20);
+        .limit(4);
 
       if (data) {
-        const filtered = data.filter((a: any) => {
-          const jobs = a.transcript_jobs as any[];
-          if (!jobs || jobs.length === 0) return true;
-          return jobs.some((j: any) => !j.settings?.module || j.settings.module === 'vocabulary');
-        }).slice(0, 4);
-        setAssets(filtered);
+        setAssets(data);
       }
     }, 3000);
 

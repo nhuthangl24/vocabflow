@@ -45,6 +45,8 @@ function computeDiff(original: string, input: string) {
   return result;
 }
 
+const YOUTUBE_OPTS = { width: '100%', height: '100%', playerVars: { autoplay: 0, rel: 0 } };
+
 export default function ShadowingWorkspaceClient({ videoUrl, transcript = [] }: { videoUrl: string, transcript: any[] }) {
   const [player, setPlayer] = useState<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -255,8 +257,8 @@ export default function ShadowingWorkspaceClient({ videoUrl, transcript = [] }: 
             </button>
           </div>
 
-          {hideVideo ? (
-            // Slim Audio Player UI
+          {hideVideo && (
+            // Slim Audio Player UI (overlay controls when video is hidden)
             <div className="w-full bg-[#1e1e1e] border border-neutral-800 rounded-2xl p-4 flex items-center gap-4 shadow-xl">
               <button 
                 onClick={handleTogglePlayPause}
@@ -283,54 +285,33 @@ export default function ShadowingWorkspaceClient({ videoUrl, transcript = [] }: 
                   className="w-full h-2 bg-neutral-700 rounded-full appearance-none cursor-pointer accent-indigo-500 hover:accent-indigo-400 transition-all"
                 />
               </div>
-
-              {/* Keep the actual video playing invisibly in the background so logic works */}
-              <div className="w-0 h-0 overflow-hidden absolute pointer-events-none opacity-0">
-                {videoId ? (
-                  <YouTube 
-                    videoId={videoId}
-                    opts={{ playerVars: { autoplay: 0, rel: 0 } }}
-                    onReady={onPlayerReady}
-                    onStateChange={onPlayerStateChange}
-                  />
-                ) : (
-                  <video
-                    ref={videoRef}
-                    src={videoUrl}
-                    onPlay={() => setIsPlaying(true)}
-                    onPause={() => setIsPlaying(false)}
-                    onEnded={() => setIsPlaying(false)}
-                    onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
-                  />
-                )}
-              </div>
-            </div>
-          ) : (
-            // Standard Video Player UI
-            <div className="relative aspect-video bg-black rounded-2xl overflow-hidden shadow-xl border border-slate-200 dark:border-neutral-800">
-              {videoId ? (
-                <YouTube 
-                  videoId={videoId}
-                  opts={{ width: '100%', height: '100%', playerVars: { autoplay: 0, rel: 0 } }}
-                  onReady={onPlayerReady}
-                  onStateChange={onPlayerStateChange}
-                  className="w-full h-full absolute inset-0"
-                  iframeClassName="w-full h-full"
-                />
-              ) : (
-                <video
-                  ref={videoRef}
-                  src={videoUrl}
-                  controls
-                  className="w-full h-full object-contain"
-                  onPlay={() => setIsPlaying(true)}
-                  onPause={() => setIsPlaying(false)}
-                  onEnded={() => setIsPlaying(false)}
-                  onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
-                />
-              )}
             </div>
           )}
+
+          {/* Single player instance — always mounted, visibility toggled via CSS to preserve playback state */}
+          <div className={hideVideo ? "w-0 h-0 overflow-hidden absolute pointer-events-none opacity-0" : "relative aspect-video bg-black rounded-2xl overflow-hidden shadow-xl border border-slate-200 dark:border-neutral-800"}>
+            {videoId ? (
+              <YouTube 
+                videoId={videoId}
+                opts={YOUTUBE_OPTS}
+                onReady={onPlayerReady}
+                onStateChange={onPlayerStateChange}
+                className="w-full h-full absolute inset-0"
+                iframeClassName="w-full h-full"
+              />
+            ) : (
+              <video
+                ref={videoRef}
+                src={videoUrl}
+                controls={!hideVideo}
+                className="w-full h-full object-contain"
+                onPlay={() => setIsPlaying(true)}
+                onPause={() => setIsPlaying(false)}
+                onEnded={() => setIsPlaying(false)}
+                onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+              />
+            )}
+          </div>
         </div>
       </div>
 

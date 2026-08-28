@@ -181,7 +181,7 @@ export default function VideoWorkspaceClient({ videoUrl, vocabulary, grammar = [
                         
                         <div className="relative bg-white dark:bg-[#0a0a0a] p-6 sm:p-8 rounded-2xl shadow-2xl border border-gray-200 dark:border-neutral-700 w-full max-w-lg max-h-[90vh] overflow-y-auto animate-in zoom-in-95 fade-in duration-200 dark:bg-[#0a0a0a] dark:border-neutral-700">
                           
-                          <div className="flex justify-between items-start mb-4 pb-4 border-b border-gray-100 dark:border-neutral-800">
+                          <div className="sticky top-0 z-10 bg-white dark:bg-[#0a0a0a] flex justify-between items-start mb-4 pb-4 pt-6 sm:pt-8 -mt-6 sm:-mt-8 -mx-6 sm:-mx-8 px-6 sm:px-8 border-b border-gray-100 dark:border-neutral-800">
                             <div>
                               <div className="flex items-center gap-3">
                                 <h2 className="text-2xl sm:text-3xl font-bold text-blue-700 dark:text-white capitalize leading-tight">
@@ -195,7 +195,7 @@ export default function VideoWorkspaceClient({ videoUrl, vocabulary, grammar = [
                                   <Volume2 className="w-4 h-4" />
                                 </button>
                               </div>
-                              <span className="text-gray-500 dark:text-neutral-400 text-base font-normal mt-1 block normal-case dark:text-neutral-400">{vocab.pronunciation}</span>
+                              <span className="text-gray-500 dark:text-neutral-400 text-base font-normal mt-1 block normal-case font-pronunciation dark:text-neutral-400">{vocab.pronunciation}</span>
                             </div>
                             
                             <div className="flex items-start gap-2">
@@ -296,7 +296,7 @@ export default function VideoWorkspaceClient({ videoUrl, vocabulary, grammar = [
                         
                         <div className="relative bg-white dark:bg-[#0a0a0a] p-6 sm:p-8 rounded-2xl shadow-2xl border border-gray-200 dark:border-neutral-700 w-full max-w-lg max-h-[90vh] overflow-y-auto animate-in zoom-in-95 fade-in duration-200 dark:bg-[#0a0a0a] dark:border-neutral-700">
                           
-                          <div className="flex justify-between items-start mb-4 pb-4 border-b border-gray-100 dark:border-neutral-800">
+                          <div className="sticky top-0 z-10 bg-white dark:bg-[#0a0a0a] flex justify-between items-start mb-4 pb-4 pt-6 sm:pt-8 -mt-6 sm:-mt-8 -mx-6 sm:-mx-8 px-6 sm:px-8 border-b border-gray-100 dark:border-neutral-800">
                             <div>
                               <div className="flex items-center gap-3">
                                 <h2 className="text-2xl sm:text-3xl font-bold text-purple-700 dark:text-white capitalize leading-tight">
@@ -310,7 +310,7 @@ export default function VideoWorkspaceClient({ videoUrl, vocabulary, grammar = [
                                   <Volume2 className="w-4 h-4" />
                                 </button>
                               </div>
-                              <span className="text-gray-500 dark:text-neutral-400 text-base font-normal mt-1 block normal-case dark:text-neutral-400">{vocab.pronunciation}</span>
+                              <span className="text-gray-500 dark:text-neutral-400 text-base font-normal mt-1 block normal-case font-pronunciation dark:text-neutral-400">{vocab.pronunciation}</span>
                             </div>
                             
                             <div className="flex items-start gap-2">
@@ -419,7 +419,7 @@ export default function VideoWorkspaceClient({ videoUrl, vocabulary, grammar = [
                         <div className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm transition-opacity" onClick={(e) => { e.stopPropagation(); setSelectedGrammar(null); }}></div>
                         
                         <div className="relative bg-white dark:bg-[#0a0a0a] p-6 sm:p-8 rounded-2xl shadow-2xl border border-purple-200 dark:border-neutral-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 fade-in duration-200 dark:bg-[#0a0a0a]">
-                          <div className="flex justify-between items-start mb-6 border-b border-gray-100 pb-4 dark:border-neutral-800">
+                          <div className="sticky top-0 z-10 bg-white dark:bg-[#0a0a0a] flex justify-between items-start mb-6 pb-4 pt-6 sm:pt-8 -mt-6 sm:-mt-8 -mx-6 sm:-mx-8 px-6 sm:px-8 border-b border-gray-100 dark:border-neutral-800">
                             <div className="pr-4">
                               <h2 className="text-2xl sm:text-3xl font-bold text-purple-800 dark:text-white capitalize leading-tight">
                                 {item.grammar_pattern}

@@ -10,12 +10,13 @@ export default async function LibraryPage() {
     redirect("/login");
   }
 
-  // Fetch ALL private media assets for the user
+  // Fetch ALL private media assets for the user (vocabulary only)
   const { data: mediaAssets } = await supabase
     .from("media_assets")
     .select("*, transcript_jobs(status, error_message, settings)")
     .neq("status", "deleted")
     .eq("user_id", user.id)
+    .eq("module", "vocabulary")
     .order("created_at", { ascending: false });
 
   // Fetch Public Playlists
@@ -24,12 +25,13 @@ export default async function LibraryPage() {
     .select("*")
     .order("created_at", { ascending: false });
 
-  // Fetch Public Media Assets (not belonging to a playlist, or we fetch all and group them)
+  // Fetch Public Media Assets (vocabulary only)
   const { data: publicAssets } = await supabase
     .from("media_assets")
     .select("*, transcript_jobs(status, error_message, settings)")
     .neq("status", "deleted")
     .eq("is_public", true)
+    .eq("module", "vocabulary")
     .order("created_at", { ascending: false });
 
   return (

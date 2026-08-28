@@ -18,7 +18,7 @@ export default function LibraryClient({
   playlists?: Playlist[],
   hideTabs?: boolean
 }) {
-  const [activeTab, setActiveTab] = useState<"public" | "private">("public");
+  const [activeTab, setActiveTab] = useState<"public" | "private">("private");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [targetLanguage, setTargetLanguage] = useState("All");
@@ -28,14 +28,6 @@ export default function LibraryClient({
   const baseAssets = (activeTab === "private" || hideTabs) ? initialAssets : publicAssets.filter((a: any) => !a.playlist_id);
   
   const filteredAssets = baseAssets.filter((asset: any) => {
-    // Exclude shadowing videos
-    const jobs = asset.transcript_jobs as any[];
-    if (jobs && jobs.length > 0) {
-      if (!jobs.some((j: any) => !j.settings?.module || j.settings.module === 'vocabulary')) {
-        return false;
-      }
-    }
-
     const matchesSearch = asset.title?.toLowerCase().includes(searchQuery.toLowerCase());
     const assetLang = asset.transcript_jobs?.[0]?.settings?.targetLanguage || "English";
     const matchesLang = targetLanguage === "All" || assetLang === targetLanguage;

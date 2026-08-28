@@ -10,6 +10,11 @@ body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif !important;
 }
 
+/* Font for pinyin, IPA, and phonetic transcriptions — Arial renders diacritics and IPA symbols correctly */
+.font-pronunciation {
+  font-family: Arial, 'Noto Sans', Helvetica, sans-serif !important;
+}
+
 @layer utilities {
   .bg-grid-paper {
     background-color: #FDFBF7;

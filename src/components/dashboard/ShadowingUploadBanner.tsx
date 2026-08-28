@@ -8,15 +8,9 @@ import { createMediaJob } from "@/app/actions/media";
 import { Video, LinkIcon, Upload, Sparkles, Clipboard } from "lucide-react";
 
 export default function ShadowingUploadBanner({ 
-  userId, 
-  isPro = false,
-  todayCount = 0,
-  dailyLimit = 2
+  userId
 }: { 
-  userId: string, 
-  isPro?: boolean,
-  todayCount?: number,
-  dailyLimit?: number
+  userId: string
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -27,19 +21,12 @@ export default function ShadowingUploadBanner({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
 
-  const limitReached = todayCount >= dailyLimit;
-
   const handleProcess = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
     if (!userId) {
       router.push('/login');
-      return;
-    }
-
-    if (limitReached) {
-      setError(`Bạn đã hết lượt tạo AI hôm nay (${todayCount}/${dailyLimit}). ${!isPro ? 'Hãy nâng cấp Pro để tiếp tục!' : ''}`);
       return;
     }
 
@@ -57,7 +44,8 @@ export default function ShadowingUploadBanner({
           storagePath: "", 
           sizeBytes: 0,
           sourceUrl: youtubeUrl,
-          settings: { targetLanguage, module: 'shadowing' }
+          settings: { targetLanguage, module: 'shadowing' },
+          module: 'shadowing'
         });
       } else {
         // Fallback for upload via hidden file input (handled by standard click)
@@ -84,7 +72,8 @@ export default function ShadowingUploadBanner({
           type,
           storagePath: uploadData.path,
           sizeBytes: file.size,
-          settings: { targetLanguage, module: 'shadowing' }
+          settings: { targetLanguage, module: 'shadowing' },
+          module: 'shadowing'
         });
       }
 
@@ -117,16 +106,7 @@ export default function ShadowingUploadBanner({
         {/* Input Section */}
         <div className="w-full z-10 bg-slate-50/50 dark:bg-[#0a0a0a]/50 rounded-xl border border-slate-100 dark:border-neutral-800 p-2 shadow-inner relative">
           
-          {limitReached && (
-            <div className="absolute inset-0 bg-white/60 dark:bg-[#0a0a0a]/60 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center rounded-xl border border-rose-200 dark:border-rose-900/50">
-              <p className="text-sm font-bold text-slate-900 dark:text-white mb-2">Đã hết lượt xử lý AI hôm nay</p>
-              <Link href="/pricing" className="text-xs font-bold bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">
-                Nâng cấp Pro để mở khóa
-              </Link>
-            </div>
-          )}
-
-          <form onSubmit={handleProcess} className={`flex flex-col gap-2 ${limitReached ? 'opacity-50 pointer-events-none' : ''}`}>
+          {/* Limit Reached Banner - Removed for Shadowing */}<form onSubmit={handleProcess} className={`flex flex-col gap-2`}>
             
             {/* Tabs */}
             <div className="flex items-center gap-1 px-1 pt-1 pb-2">
