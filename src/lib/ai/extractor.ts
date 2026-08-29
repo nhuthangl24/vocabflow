@@ -46,7 +46,7 @@ export type ExtractorResponse = z.infer<typeof ExtractorResponseSchema>;
 export type VocabularyItem = z.infer<typeof VocabularyItemSchema>;
 
 export async function extractVocabulary(rawTranscript: string, settings: any): Promise<ExtractorResponse> {
-  const provider = getProvider();
+  const provider = getProvider('vocab');
   
   // Clean up common transcript artifacts (like >>, >>>)
   const transcript = rawTranscript.replace(/>+/g, '').trim();

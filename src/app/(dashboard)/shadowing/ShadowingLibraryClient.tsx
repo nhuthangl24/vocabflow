@@ -140,7 +140,7 @@ export default function ShadowingLibraryClient({
           if (item.isPlaylist) {
             const count = publicAssets.filter(a => a.playlist_id === item.id).length;
             return (
-              <Link href={`/shadowing/playlist/${item.id}`} key={`pl-${item.id}`} className="group bg-white dark:bg-[#0a0a0a] rounded-2xl border border-slate-200 dark:border-neutral-800 overflow-hidden hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-all duration-300 flex flex-col">
+              <Link href={`/shadowing/playlist/${item.id}`} key={`pl-${item.id}`} className="h-full group bg-white dark:bg-[#0a0a0a] rounded-2xl border border-slate-200 dark:border-neutral-800 overflow-hidden hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-all duration-300 flex flex-col">
                 <div className="aspect-video relative bg-slate-900 overflow-hidden">
                   {item.thumbnail_url ? (
                     <img src={item.thumbnail_url} alt="Playlist" className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-500" />
@@ -173,7 +173,7 @@ export default function ShadowingLibraryClient({
           const isDeleting = deleting === asset.id;
           const isNavigating = navigating === asset.id;
         return (
-          <div key={asset.id} className="relative group">
+          <div key={asset.id} className="relative group h-full flex flex-col">
             <Link
               href={isProcessing ? "#" : `/shadowing/${asset.id}`}
               onClick={(e) => {
@@ -183,7 +183,7 @@ export default function ShadowingLibraryClient({
                 }
                 setNavigating(asset.id);
               }}
-              className={`bg-white dark:bg-[#0a0a0a] rounded-2xl border border-slate-200 dark:border-neutral-800 overflow-hidden hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-all duration-300 flex flex-col ${(isDeleting || isNavigating) ? 'opacity-50 pointer-events-none' : ''}`}
+              className={`flex-1 bg-white dark:bg-[#0a0a0a] rounded-2xl border border-slate-200 dark:border-neutral-800 overflow-hidden hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-all duration-300 flex flex-col ${(isDeleting || isNavigating) ? 'opacity-50 pointer-events-none' : ''}`}
             >
               <div className="aspect-video relative bg-slate-900 overflow-hidden">
                 {(asset.type === 'youtube' && asset.source_url) ? (

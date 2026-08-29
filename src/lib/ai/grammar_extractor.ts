@@ -25,7 +25,7 @@ export type GrammarExtractorResponse = z.infer<typeof GrammarExtractorResponseSc
 export type GrammarItem = z.infer<typeof GrammarItemSchema>;
 
 export async function extractGrammar(rawTranscript: string, settings: any): Promise<GrammarExtractorResponse> {
-  const provider = getProvider();
+  const provider = getProvider('grammar');
   
   // Clean up common transcript artifacts (like >>, >>>)
   const transcript = rawTranscript.replace(/>+/g, '').trim();
