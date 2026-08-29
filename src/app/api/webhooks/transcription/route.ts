@@ -18,8 +18,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing jobId" }, { status: 400 });
     }
 
-    // Process synchronously to prevent Next.js from killing the task
-    await processJob(jobId);
+    // Process asynchronously to prevent Next.js from killing the request (Fire-and-forget)
+    processJob(jobId).catch(console.error);
 
     return NextResponse.json({ status: "processing completed", jobId });
   } catch (error: any) {
@@ -218,6 +218,22 @@ async function processJob(jobId: string) {
 
     }
 
+    // Check if we should skip AI extraction
+    const isShadowing = job.settings?.module === 'shadowing';
+
+    // Apply AI Subtitle Cleaner ONLY for Shadowing videos
+    if (isShadowing && allSegments.length > 0) {
+      console.log(`[Job ${jobId}] Running Subtitle Editor AI on ${allSegments.length} segments...`);
+      try {
+        const { cleanSubtitles } = await import("@/lib/ai/subtitle_editor");
+        const cleanedSegments = await cleanSubtitles(allSegments);
+        console.log(`[Job ${jobId}] Subtitle Editor finished. Output segments: ${cleanedSegments.length}`);
+        allSegments = cleanedSegments;
+      } catch (err) {
+        console.error(`[Job ${jobId}] Subtitle Editor AI failed. Falling back to original segments.`, err);
+      }
+    }
+
     // Save segments to DB
     if (allSegments.length > 0) {
       await supabase.from("transcript_segments").insert(allSegments);
@@ -225,9 +241,6 @@ async function processJob(jobId: string) {
 
     // Update status to analyzing
     await supabase.from("transcript_jobs").update({ status: "analyzing" }).eq("id", jobId);
-
-    // Check if we should skip AI extraction
-    const isShadowing = job.settings?.module === 'shadowing';
     
     if (!isShadowing) {
           // Call LLM Extractor
@@ -312,7 +325,6 @@ async function processJob(jobId: string) {
             pinyin: item.pinyin,
             measure_words: item.measureWords,
             hsk_level: item.hskLevel ? Number(item.hskLevel) : null,
-            grammar_pattern: item.grammarPattern,
           }));
       
           if (vocabInserts.length > 0) {
@@ -326,8 +338,8 @@ async function processJob(jobId: string) {
             // 60k chars is about 15k tokens, very safe for modern LLMs.
             const grammarTargetText = fullTranscript.length > 60000 ? fullTranscript.substring(0, 60000) : fullTranscript;
             
-            // Grammar is not limited by package. Calculate as requestedCount - 5 (or a minimum of 1).
-            const grammarTargetCount = Math.max(1, requestedCount - 5);
+            // Grammar should be independent of vocabulary count. Usually a video has around 10 key grammar patterns.
+            const grammarTargetCount = 10;
 
             const grammarExtraction = await extractGrammar(grammarTargetText, { ...job.settings, targetCount: grammarTargetCount });
             const grammarItems = grammarExtraction?.items || [];

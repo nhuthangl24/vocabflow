@@ -87,7 +87,11 @@ export default function InlineUploadBanner({
     }
 
     if (limitReached) {
-      setError(`Bạn đã hết lượt tạo AI hôm nay (${todayCount}/${dailyLimit}). ${!isPro ? 'Hãy nâng cấp Pro để tiếp tục!' : ''}`);
+      if (dailyLimit === 0) {
+        setError(`Tính năng này chỉ dành cho tài khoản Basic & Pro. Hãy nâng cấp để sử dụng!`);
+      } else {
+        setError(`Bạn đã hết lượt tạo AI hôm nay (${todayCount}/${dailyLimit}). ${!isPro ? 'Hãy nâng cấp Pro để tiếp tục!' : ''}`);
+      }
       return;
     }
     
@@ -187,9 +191,11 @@ export default function InlineUploadBanner({
           
           {limitReached && (
             <div className="absolute inset-0 bg-white/60 dark:bg-[#0a0a0a]/60 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center rounded-xl border border-rose-200 dark:border-rose-900/50">
-              <p className="text-sm font-bold text-slate-900 dark:text-white mb-2">Đã hết lượt xử lý AI hôm nay</p>
+              <p className="text-sm font-bold text-slate-900 dark:text-white mb-2">
+                {dailyLimit === 0 ? "Tính năng dành riêng cho tài khoản Basic & Pro" : "Đã hết lượt xử lý AI hôm nay"}
+              </p>
               <Link href="/pricing" className="text-xs font-bold bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">
-                Nâng cấp Pro để mở khóa
+                Nâng cấp tài khoản ngay
               </Link>
             </div>
           )}
@@ -197,14 +203,23 @@ export default function InlineUploadBanner({
           <form onSubmit={handleProcess} className={`flex flex-col gap-2 ${limitReached ? 'opacity-50 pointer-events-none' : ''}`}>
             
             {/* Tabs */}
-            <div className="flex items-center gap-1 px-1 pt-1 pb-2">
-              <button
-                type="button"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors bg-white dark:bg-neutral-900 text-indigo-600 dark:text-neutral-200 shadow-sm border border-slate-200 dark:border-neutral-700"
-              >
-                <LinkIcon className="w-3.5 h-3.5" />
-                YouTube Link
-              </button>
+            <div className="flex items-center justify-between px-1 pt-1 pb-2">
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors bg-white dark:bg-neutral-900 text-indigo-600 dark:text-neutral-200 shadow-sm border border-slate-200 dark:border-neutral-700"
+                >
+                  <LinkIcon className="w-3.5 h-3.5" />
+                  YouTube Link
+                </button>
+              </div>
+              
+              {/* Usage Count Display */}
+              {dailyLimit > 0 && dailyLimit < 999999 && (
+                <div className="text-xs font-medium text-slate-500 dark:text-neutral-400 bg-white dark:bg-neutral-900 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-neutral-700 shadow-sm">
+                  Lượt dùng: <span className="text-indigo-600 dark:text-indigo-400 font-bold">{todayCount}</span> / {dailyLimit}
+                </div>
+              )}
             </div>
 
             {/* Main Input Row */}

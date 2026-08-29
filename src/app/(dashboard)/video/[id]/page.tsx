@@ -2,9 +2,10 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import VideoWorkspaceClient from "@/components/video/VideoWorkspaceClient";
 import ProcessingStatusClient from "@/components/video/ProcessingStatusClient";
+import LoadingBackButton from "@/app/(dashboard)/shadowing/[id]/LoadingBackButton";
 export default async function VideoPage({ params }: { params: { id: string } }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -74,13 +75,16 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-6">
-        <Link href="/dashboard" className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-blue-600 transition-colors mb-4 bg-gray-50 px-3 py-1.5 rounded-lg hover:bg-blue-50 border border-gray-100 dark:text-neutral-400 dark:bg-[#0a0a0a] dark:border-neutral-800">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Quay lại Dashboard
-        </Link>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white line-clamp-2">{asset.title}</h1>
+      <div className="mb-6 flex flex-col gap-4">
+        <div>
+          <LoadingBackButton href="/dashboard" label="Quay lại Dashboard" />
+          <div className="flex items-start justify-between gap-4">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white line-clamp-2">{asset.title}</h1>
+            <div className="shrink-0 flex items-center gap-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 px-3 py-1.5 rounded-full border border-indigo-100 dark:border-indigo-500/20">
+              <BookOpen className="w-4 h-4" />
+              <span className="text-sm font-bold tracking-wide">HỌC TỪ VỰNG</span>
+            </div>
+          </div>
         </div>
       </div>
       

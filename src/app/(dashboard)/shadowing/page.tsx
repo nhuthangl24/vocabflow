@@ -39,15 +39,31 @@ export default async function ShadowingLibraryPage() {
     .eq("module", "shadowing")
     .order("created_at", { ascending: false });
 
-  // Fetch user profile for limits/roles
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("is_pro, role")
-    .eq("id", user.id)
-    .single();
+  const adminEmails = process.env.ADMIN_EMAILS?.split(',') || [];
+  const isAdmin = user && user.email && adminEmails.includes(user.email);
+  const userPlanName = (user?.user_metadata?.plan || 'free').toUpperCase();
+  const isPro = userPlanName === 'PRO';
 
-  const isAdmin = profile?.role === 'admin';
-  const isPro = profile?.is_pro || false;
+  let dailyLimit = 0;
+  if (isAdmin || userPlanName === 'PRO') {
+    dailyLimit = 999999;
+  } else if (userPlanName === 'BASIC') {
+    dailyLimit = 5;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const { count: tc } = await supabase
+    .from("media_assets")
+    .select("*", { count: "exact", head: true })
+    .gte("created_at", today.toISOString())
+    .eq("user_id", user.id)
+    .neq("status", "failed")
+    .neq("status", "deleted")
+    .eq("module", "shadowing");
+
+  const todayCount = tc || 0;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -73,8 +89,8 @@ export default async function ShadowingLibraryPage() {
         <InlineUploadBanner 
           userId={user.id} 
           isPro={isPro}
-          dailyLimit={999999} // handled server side
-          todayCount={0}      // handled server side
+          dailyLimit={dailyLimit}
+          todayCount={todayCount}
           module="shadowing"
         />
       )}

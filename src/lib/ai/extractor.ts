@@ -31,8 +31,7 @@ export const VocabularyItemSchema = z.object({
   traditional: z.string().optional(),
   pinyin: z.string().optional(),
   measureWords: z.array(z.string()).optional(),
-  hskLevel: z.any().optional(),
-  grammarPattern: z.string().optional()
+  hskLevel: z.any().optional()
 });
 
 export const ExtractorResponseSchema = z.object({

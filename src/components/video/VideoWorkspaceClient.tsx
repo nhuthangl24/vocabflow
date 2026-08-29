@@ -88,11 +88,56 @@ export default function VideoWorkspaceClient({ videoUrl, vocabulary, grammar = [
   };
 
 
+
+  const getFilterButtons = () => {
+    const lang = targetLanguage.toLowerCase();
+    if (lang.includes("chinese") || lang.includes("trung")) {
+      return [
+        { id: "all", label: "Tất cả", color: "blue" },
+        { id: "basic", label: "Cơ bản (HSK 1-2)", color: "green" },
+        { id: "intermediate", label: "Trung cấp (HSK 3-4)", color: "yellow" },
+        { id: "advanced", label: "Cao cấp (HSK 5-6)", color: "red" }
+      ];
+    } else if (lang.includes("japanese") || lang.includes("nhật")) {
+      return [
+        { id: "all", label: "Tất cả", color: "blue" },
+        { id: "basic", label: "Cơ bản (N5-N4)", color: "green" },
+        { id: "intermediate", label: "Trung cấp (N3-N2)", color: "yellow" },
+        { id: "advanced", label: "Cao cấp (N1)", color: "red" }
+      ];
+    } else if (lang.includes("korean") || lang.includes("hàn")) {
+      return [
+        { id: "all", label: "Tất cả", color: "blue" },
+        { id: "basic", label: "Sơ cấp (L1-L2)", color: "green" },
+        { id: "intermediate", label: "Trung cấp (L3-L4)", color: "yellow" },
+        { id: "advanced", label: "Cao cấp (L5-L6)", color: "red" }
+      ];
+    }
+    return [
+      { id: "all", label: "Tất cả", color: "blue" },
+      { id: "basic", label: "Cơ bản (A)", color: "green" },
+      { id: "intermediate", label: "Trung cấp (B)", color: "yellow" },
+      { id: "advanced", label: "Cao cấp (C)", color: "red" }
+    ];
+  };
+
+  const filterButtons = getFilterButtons();
+
   const filteredVocabulary = vocabulary.filter(v => {
     if (levelFilter === "all") return true;
-    if (levelFilter === "A") return v.level?.startsWith("A");
-    if (levelFilter === "B") return v.level?.startsWith("B");
-    if (levelFilter === "C") return v.level?.startsWith("C");
+    const lvl = (v.level || "").toUpperCase();
+    if (levelFilter === "basic") {
+      return lvl.startsWith("A") || lvl.includes("HSK 1") || lvl.includes("HSK 2") || lvl.includes("N5") || lvl.includes("N4") || lvl.includes("LEVEL 1") || lvl.includes("LEVEL 2");
+    }
+    if (levelFilter === "intermediate") {
+      return lvl.startsWith("B") || lvl.includes("HSK 3") || lvl.includes("HSK 4") || lvl.includes("N3") || lvl.includes("LEVEL 3") || lvl.includes("LEVEL 4");
+    }
+    if (levelFilter === "advanced") {
+      return lvl.startsWith("C") || lvl.includes("HSK 5") || lvl.includes("HSK 6") || lvl.includes("N2") || lvl.includes("N1") || lvl.includes("LEVEL 5") || lvl.includes("LEVEL 6");
+    }
+    if (levelFilter === "A") return lvl.startsWith("A");
+    if (levelFilter === "B") return lvl.startsWith("B");
+    if (levelFilter === "C") return lvl.startsWith("C");
     return true;
   });
 
@@ -122,30 +167,20 @@ export default function VideoWorkspaceClient({ videoUrl, vocabulary, grammar = [
             <h2 className="font-semibold text-gray-900 dark:text-white text-lg">Danh sách từ vựng ({filteredVocabulary.length})</h2>
             
             <div className="flex bg-white dark:bg-[#0a0a0a] rounded-lg border border-gray-300 p-1 overflow-x-auto max-w-full dark:bg-[#0a0a0a] dark:border-neutral-600">
-              <button 
-                onClick={() => setLevelFilter('all')}
-                className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md whitespace-nowrap ${levelFilter === 'all' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' : 'text-gray-600 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-800'}`}
-              >
-                Tất cả
-              </button>
-              <button 
-                onClick={() => setLevelFilter('A')}
-                className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md whitespace-nowrap ${levelFilter === 'A' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' : 'text-gray-600 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-800'}`}
-              >
-                Cơ bản (A)
-              </button>
-              <button 
-                onClick={() => setLevelFilter('B')}
-                className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md whitespace-nowrap ${levelFilter === 'B' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400' : 'text-gray-600 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-800'}`}
-              >
-                Trung cấp (B)
-              </button>
-              <button 
-                onClick={() => setLevelFilter('C')}
-                className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md whitespace-nowrap ${levelFilter === 'C' ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' : 'text-gray-600 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-800'}`}
-              >
-                Cao cấp (C)
-              </button>
+              {filterButtons.map(btn => (
+                <button 
+                  key={btn.id}
+                  onClick={() => setLevelFilter(btn.id)}
+                  className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md whitespace-nowrap ${levelFilter === btn.id ? (
+                    btn.color === 'green' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' :
+                    btn.color === 'yellow' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400' :
+                    btn.color === 'red' ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' :
+                    'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400'
+                  ) : 'text-gray-600 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-800'}`}
+                >
+                  {btn.label}
+                </button>
+              ))}
             </div>
           </div>
           

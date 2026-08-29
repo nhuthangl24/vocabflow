@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { Flame, BrainCircuit, CheckCircle2, Target, CalendarDays, BarChart3, Lock } from "lucide-react";
 import Link from "next/link";
 
@@ -16,10 +17,16 @@ interface Stats {
   totalShadowingSegments?: number;
 }
 
+const dateFormatter = new Intl.DateTimeFormat('vi-VN', {
+  year: 'numeric',
+  month: 'numeric',
+  day: 'numeric'
+});
+
 export default function AnalyticsClient({ stats }: { stats: Stats }) {
   const days = stats.heatmapDays;
 
-  const getMonthLabels = () => {
+  const monthLabels = useMemo(() => {
     const labels = [];
     let currentMonth = -1;
     for (let i = 0; i < days.length; i++) {
@@ -33,15 +40,16 @@ export default function AnalyticsClient({ stats }: { stats: Stats }) {
       }
     }
     return labels;
-  };
-
-  const monthLabels = getMonthLabels();
+  }, [days]);
 
   // Helper to split into weeks (7 days per column)
-  const weeks = [];
-  for (let i = 0; i < days.length; i += 7) {
-    weeks.push(days.slice(i, i + 7));
-  }
+  const weeks = useMemo(() => {
+    const w = [];
+    for (let i = 0; i < days.length; i += 7) {
+      w.push(days.slice(i, i + 7));
+    }
+    return w;
+  }, [days]);
 
   const getColorClass = (intensity: number) => {
     switch(intensity) {
@@ -187,7 +195,7 @@ export default function AnalyticsClient({ stats }: { stats: Stats }) {
                         <div 
                           key={dIdx} 
                           className={`w-3 h-3 rounded-[2px] transition-colors ${getColorClass(day.intensity)}`}
-                          title={`${new Date(day.date).toLocaleDateString('vi-VN')} - Mức độ: ${day.intensity}`}
+                          title={`${dateFormatter.format(new Date(day.date))} - Mức độ: ${day.intensity}`}
                         ></div>
                       ))}
                     </div>

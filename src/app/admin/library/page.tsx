@@ -23,6 +23,8 @@ export default function AdminPage() {
   const [progress, setProgress] = useState(0);
   const [totalUploads, setTotalUploads] = useState(0);
   const [logs, setLogs] = useState<string[]>([]);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [batchUploadConfirm, setBatchUploadConfirm] = useState(false);
 
   useEffect(() => {
     fetchPlaylists();
@@ -52,21 +54,28 @@ export default function AdminPage() {
     }
   };
 
-  const handleDeletePlaylist = async (id: string) => {
-    if (!confirm("CẢNH BÁO: Bạn có chắc chắn muốn xóa playlist này? TOÀN BỘ các video bên trong playlist cũng sẽ bị xóa sạch!")) return;
+  const executeDeletePlaylist = async () => {
+    if (!deleteConfirmId) return;
     try {
-      await deletePlaylist(id);
+      await deletePlaylist(deleteConfirmId);
       fetchPlaylists();
     } catch (e) {
       alert("Failed to delete playlist.");
+    } finally {
+      setDeleteConfirmId(null);
     }
   };
 
-  const handleBatchUpload = async () => {
+  const handleBatchUploadClick = () => {
     const list = urls.split('\n').map(u => u.trim()).filter(u => u.length > 10);
     if (list.length === 0) return;
-    
-    if (!confirm(`Bạn sắp tải lên ${list.length} video vào phòng ${targetModule === 'vocabulary' ? 'Từ vựng' : 'Shadowing'}. Tiếp tục?`)) return;
+    setBatchUploadConfirm(true);
+  };
+
+  const handleBatchUpload = async () => {
+    setBatchUploadConfirm(false);
+    const list = urls.split('\n').map(u => u.trim()).filter(u => u.length > 10);
+    if (list.length === 0) return;
 
     setUploading(true);
     setTotalUploads(list.length);
@@ -169,7 +178,7 @@ export default function AdminPage() {
           </div>
 
           <button
-            onClick={handleBatchUpload}
+            onClick={handleBatchUploadClick}
             disabled={uploading || urls.trim().length === 0}
             className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 mt-2"
           >
@@ -216,7 +225,7 @@ export default function AdminPage() {
                     <p className="font-semibold text-sm truncate">{p.title}</p>
                     <p className="text-xs text-gray-500">{new Date(p.created_at).toLocaleDateString()}</p>
                   </div>
-                  <button onClick={() => handleDeletePlaylist(p.id)} className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950 rounded-md transition-colors">
+                  <button onClick={() => setDeleteConfirmId(p.id)} className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950 rounded-md transition-colors">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -226,6 +235,68 @@ export default function AdminPage() {
         </div>
 
       </div>
+
+      {/* Delete Playlist Modal */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40 backdrop-blur-sm animate-in fade-in duration-200 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 dark:bg-[#0a0a0a]">
+            <div className="p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 mb-2 dark:text-white">Xóa playlist này?</h3>
+              <p className="text-sm text-slate-500 mb-6 dark:text-neutral-400">
+                CẢNH BÁO: Bạn có chắc chắn muốn xóa playlist này? TOÀN BỘ các video bên trong cũng sẽ bị xóa sạch! Hành động này không thể hoàn tác.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteConfirmId(null)}
+                  className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors dark:text-neutral-200 dark:bg-neutral-900"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  onClick={executeDeletePlaylist}
+                  className="flex-1 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-medium rounded-lg transition-colors"
+                >
+                  Xóa ngay
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Upload Modal */}
+      {batchUploadConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40 backdrop-blur-sm animate-in fade-in duration-200 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 dark:bg-[#0a0a0a]">
+            <div className="p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto mb-4">
+                <Upload className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 mb-2 dark:text-white">Xác nhận tải lên</h3>
+              <p className="text-sm text-slate-500 mb-6 dark:text-neutral-400">
+                Bạn sắp tải lên {urls.split('\n').map(u => u.trim()).filter(u => u.length > 10).length} video vào phòng {targetModule === 'vocabulary' ? 'Từ vựng' : 'Shadowing'}. Bạn có muốn tiếp tục?
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setBatchUploadConfirm(false)}
+                  className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors dark:text-neutral-200 dark:bg-neutral-900"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  onClick={handleBatchUpload}
+                  className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors"
+                >
+                  Tiến hành
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

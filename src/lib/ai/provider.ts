@@ -9,6 +9,13 @@ export interface LLMProvider {
     schema: ZodSchema<T>;
     model?: string;
   }): Promise<T>;
+
+  generateText(params: {
+    systemPrompt: string;
+    userPrompt: string;
+    model?: string;
+    temperature?: number;
+  }): Promise<string>;
 }
 
 export class OpenAIProvider implements LLMProvider {
@@ -61,6 +68,33 @@ export class OpenAIProvider implements LLMProvider {
       throw new Error(`Invalid JSON: ${e?.message || 'Bad format'}`);
     }
   }
+
+  async generateText(params: {
+    systemPrompt: string;
+    userPrompt: string;
+    model?: string;
+    temperature?: number;
+  }): Promise<string> {
+    const { systemPrompt, userPrompt, model, temperature } = params;
+
+    const response = await this.client.chat.completions.create({
+      model: model || this.defaultModel,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      temperature: temperature ?? 0.7
+    });
+
+    if (!response || !response.choices || response.choices.length === 0) {
+      console.error("Invalid LLM response:", JSON.stringify(response));
+      throw new Error("No valid response or choices returned from LLM");
+    }
+
+    const content = response.choices[0]?.message?.content;
+    if (content == null) throw new Error("No text content returned from LLM");
+    return content;
+  }
 }
 
 export class AnthropicProvider implements LLMProvider {
@@ -105,6 +139,30 @@ export class AnthropicProvider implements LLMProvider {
       console.error("Failed to parse Anthropic LLM output:", content);
       throw new Error("Invalid JSON structure returned by LLM");
     }
+  }
+
+  async generateText(params: {
+    systemPrompt: string;
+    userPrompt: string;
+    model?: string;
+    temperature?: number;
+  }): Promise<string> {
+    const { systemPrompt, userPrompt, model, temperature } = params;
+
+    const response = await this.client.messages.create({
+      model: model || this.defaultModel,
+      system: systemPrompt,
+      messages: [
+        { role: "user", content: userPrompt }
+      ],
+      max_tokens: 4096,
+      temperature: temperature ?? 0.7
+    });
+
+    // @ts-ignore
+    const content = response.content[0]?.text;
+    if (content == null) throw new Error("No content returned from LLM");
+    return content;
   }
 }
 

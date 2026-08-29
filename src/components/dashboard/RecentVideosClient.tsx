@@ -60,6 +60,9 @@ export default function RecentVideosClient({ initialAssets, userId }: { initialA
     // Mark as deleted instead of actual DB deletion to preserve AI limit count
     await supabase.from("media_assets").update({ status: 'deleted' }).eq("id", deleteConfirmId);
     
+    // Physically delete the related transcript jobs to clean up vocabulary, grammar, and segments
+    await supabase.from("transcript_jobs").delete().eq("media_asset_id", deleteConfirmId);
+    
     // Optimistic UI update
     setAssets(prev => prev.filter(a => a.id !== deleteConfirmId));
     setDeleteConfirmId(null);

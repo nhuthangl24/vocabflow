@@ -44,7 +44,6 @@ export default async function DashboardPage() {
         .select("*, transcript_jobs(status, error_message, settings)")
         .neq("status", "deleted")
         .eq("user_id", user.id)
-        .or("is_public.is.null,is_public.eq.false")
         .eq("module", "vocabulary")
         .order("created_at", { ascending: false })
         .limit(4),
@@ -54,7 +53,6 @@ export default async function DashboardPage() {
         .from("media_assets")
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id)
-        .or("is_public.is.null,is_public.eq.false")
         .neq("status", "deleted")
         .eq("module", "vocabulary"),
 
@@ -70,7 +68,6 @@ export default async function DashboardPage() {
         .select("*", { count: "exact", head: true })
         .gte("created_at", today.toISOString())
         .eq("user_id", user.id)
-        .or("is_public.is.null,is_public.eq.false")
         .neq("status", "failed")
         .neq("status", "deleted")
         .eq("module", "vocabulary")

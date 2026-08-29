@@ -13,6 +13,7 @@ export default async function VocabularyPage() {
   const { data: items } = await supabase
     .from("vocabulary_items")
     .select("*, transcript_jobs(settings)")
+    .is("grammar_pattern", null)
     .order("created_at", { ascending: false });
 
   return (
