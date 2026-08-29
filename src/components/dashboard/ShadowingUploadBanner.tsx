@@ -1,3 +1,4 @@
+import toast from "react-hot-toast";
 "use client";
 
 import { useState } from "react";
@@ -49,6 +50,12 @@ export default function ShadowingUploadBanner({
           settings: { targetLanguage, module: 'shadowing' },
           module: 'shadowing'
         });
+        if (res.cached) {
+          toast.success("Đã nhân bản từ hệ thống!");
+          router.push(`/shadowing/${res.asset.id}`);
+          setUploading(false);
+          return;
+        }
         createdJob = res.job;
       } else {
         // Fallback for upload via hidden file input (handled by standard click)

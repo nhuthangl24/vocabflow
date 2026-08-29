@@ -226,7 +226,7 @@ async function processJob(jobId: string) {
       console.log(`[Job ${jobId}] Running Subtitle Editor AI on ${allSegments.length} segments...`);
       try {
         const { cleanSubtitles } = await import("@/lib/ai/subtitle_editor");
-        const cleanedSegments = await cleanSubtitles(allSegments);
+        const cleanedSegments = await cleanSubtitles(allSegments, job.user_id);
         console.log(`[Job ${jobId}] Subtitle Editor finished. Output segments: ${cleanedSegments.length}`);
         allSegments = cleanedSegments;
       } catch (err) {
@@ -368,7 +368,7 @@ async function processJob(jobId: string) {
           // Mark as completed
       
     }
-    await supabase.from("transcript_jobs").update({ status: "completed" }).eq("id", jobId);
+    await supabase.from("transcript_jobs").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", jobId);
     await supabase.from("media_assets").update({ status: "ready" }).eq("id", asset.id);
 
     // Cleanup

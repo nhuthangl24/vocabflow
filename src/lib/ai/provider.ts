@@ -2,12 +2,23 @@ import { z, ZodSchema } from "zod";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 
+import { trackAILog } from "../analytics";
+
+function calculateCost(provider: string, inputTokens: number, outputTokens: number): number {
+  if (provider.toLowerCase() === 'hhtech' || provider.toLowerCase() === 'anthropic') {
+    // 900 credit per 1M input, 4500 credit per 1M output
+    return (inputTokens * 900 / 1000000) + (outputTokens * 4500 / 1000000);
+  }
+  return 0; // Default or KiraAI
+}
+
 export interface AIProvider {
   generateStructuredOutput<T>(params: {
     systemPrompt: string;
     userPrompt: string;
     schema: ZodSchema<T>;
     model?: string;
+    tracking?: { userId?: string, jobId?: string, taskType: string, providerName?: string };
   }): Promise<T>;
 
   generateText(params: {
@@ -15,6 +26,7 @@ export interface AIProvider {
     userPrompt: string;
     model?: string;
     temperature?: number;
+    tracking?: { userId?: string, jobId?: string, taskType: string, providerName?: string };
   }): Promise<string>;
 }
 
@@ -38,30 +50,85 @@ export class OpenAICompatibleProvider implements AIProvider {
     userPrompt: string;
     schema: ZodSchema<T>;
     model?: string;
+    tracking?: { userId?: string, jobId?: string, taskType: string, providerName?: string };
   }): Promise<T> {
-    const { systemPrompt, userPrompt, schema, model } = params;
+    const { systemPrompt, userPrompt, schema, model, tracking } = params;
+    const start = Date.now();
+    let usage = { prompt_tokens: 0, completion_tokens: 0 };
     
-    const response = await this.client.chat.completions.create({
-      model: model || this.defaultModel,
-      messages: [
-        { role: "system", content: systemPrompt + "\n\nCRITICAL: You must output ONLY valid JSON matching the required schema. Do not output markdown, just the JSON." },
-        { role: "user", content: userPrompt }
-      ],
-      response_format: { type: "json_object" }
-    });
-
-    const content = response.choices[0]?.message?.content;
-    if (!content) throw new Error("No content returned from LLM");
-
     try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/) || content.match(/\[[\s\S]*\]/);
-      let jsonStr = jsonMatch ? jsonMatch[0] : content;
-      jsonStr = jsonStr.replace(/,\s*([\]}])/g, '$1');
-      const parsed = JSON.parse(jsonStr);
-      return schema.parse(parsed) as T;
-    } catch (e: any) {
-      console.error("Failed to parse LLM output:", content);
-      throw new Error(`Invalid JSON: ${e?.message || 'Bad format'}`);
+      const response = await this.client.chat.completions.create({
+        model: model || this.defaultModel,
+        messages: [
+          { role: "system", content: systemPrompt + "\n\nCRITICAL: You must output ONLY valid JSON matching the required schema. Do not output markdown, just the JSON." },
+          { role: "user", content: userPrompt }
+        ],
+        response_format: { type: "json_object" }
+      });
+
+      usage = response.usage || usage;
+      const content = response.choices[0]?.message?.content;
+      if (!content) throw new Error("No content returned from LLM");
+
+      let jsonStr = content;
+      try {
+        const jsonMatch = content.match(/\{[\s\S]*\}/) || content.match(/\[[\s\S]*\]/);
+        jsonStr = jsonMatch ? jsonMatch[0] : content;
+        jsonStr = jsonStr.replace(/,\s*([\]}])/g, '$1');
+        const parsed = JSON.parse(jsonStr);
+        const result = schema.parse(parsed) as T;
+        
+        if (tracking) {
+          trackAILog({
+            user_id: tracking.userId,
+            job_id: tracking.jobId,
+            provider: tracking.providerName || 'unknown',
+            model: model || this.defaultModel,
+            task_type: tracking.taskType,
+            input_tokens: usage.prompt_tokens,
+            output_tokens: usage.completion_tokens,
+            cost_usd: calculateCost(tracking.providerName || 'unknown', usage.prompt_tokens, usage.completion_tokens),
+            latency_ms: Date.now() - start,
+            status: 'success',
+            raw_response: content
+          });
+        }
+        
+        return result;
+      } catch (e: any) {
+        if (tracking) {
+          trackAILog({
+            user_id: tracking.userId,
+            job_id: tracking.jobId,
+            provider: tracking.providerName || 'unknown',
+            model: model || this.defaultModel,
+            task_type: tracking.taskType,
+            input_tokens: usage.prompt_tokens,
+            output_tokens: usage.completion_tokens,
+            cost_usd: calculateCost(tracking.providerName || 'unknown', usage.prompt_tokens, usage.completion_tokens),
+            latency_ms: Date.now() - start,
+            status: 'error',
+            error_message: `JSON Parse Error: ${e?.message}`,
+            raw_response: content
+          });
+        }
+        console.error("Failed to parse LLM output:", content);
+        throw new Error(`Invalid JSON: ${e?.message || 'Bad format'}`);
+      }
+    } catch (err: any) {
+      if (tracking) {
+        trackAILog({
+            user_id: tracking.userId,
+            job_id: tracking.jobId,
+            provider: tracking.providerName || 'unknown',
+            model: model || this.defaultModel,
+            task_type: tracking.taskType,
+            latency_ms: Date.now() - start,
+            status: 'error',
+            error_message: err?.message
+        });
+      }
+      throw err;
     }
   }
 
@@ -70,34 +137,73 @@ export class OpenAICompatibleProvider implements AIProvider {
     userPrompt: string;
     model?: string;
     temperature?: number;
+    tracking?: { userId?: string, jobId?: string, taskType: string, providerName?: string };
   }): Promise<string> {
-    const { systemPrompt, userPrompt, model, temperature } = params;
+    const { systemPrompt, userPrompt, model, temperature, tracking } = params;
+    const start = Date.now();
 
-    const stream = await this.client.chat.completions.create({
-      model: model || this.defaultModel,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
-      temperature: temperature ?? 0.7,
-      stream: true, // Use streaming to prevent Nginx 504 Gateway Timeout on slow providers
-    });
+    try {
+      const response = await this.client.chat.completions.create({
+        model: model || this.defaultModel,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        temperature: temperature ?? 0.7,
+      });
 
-    let content = "";
-    for await (const chunk of stream) {
-      content += chunk.choices[0]?.delta?.content || "";
+      const usage = response.usage || { prompt_tokens: 0, completion_tokens: 0 };
+      const content = response.choices[0]?.message?.content;
+      if (!content) throw new Error("No text content returned from LLM");
+
+      if (tracking) {
+        trackAILog({
+          user_id: tracking.userId,
+          job_id: tracking.jobId,
+          provider: tracking.providerName || 'unknown',
+          model: model || this.defaultModel,
+          task_type: tracking.taskType,
+          input_tokens: usage.prompt_tokens,
+          output_tokens: usage.completion_tokens,
+          cost_usd: calculateCost(tracking.providerName || 'unknown', usage.prompt_tokens, usage.completion_tokens),
+          latency_ms: Date.now() - start,
+          status: 'success'
+        });
+      }
+
+      return content;
+    } catch (err: any) {
+      if (tracking) {
+        trackAILog({
+            user_id: tracking.userId,
+            job_id: tracking.jobId,
+            provider: tracking.providerName || 'unknown',
+            model: model || this.defaultModel,
+            task_type: tracking.taskType,
+            latency_ms: Date.now() - start,
+            status: 'error',
+            error_message: err?.message
+        });
+      }
+      throw err;
     }
-
-    if (!content) throw new Error("No text content returned from LLM");
-    return content;
   }
 }
 
 export class KiraAIProvider extends OpenAICompatibleProvider {
   constructor() {
+    const rawKeys = process.env.KIRAAI_API_KEY || "";
+    // Hỗ trợ chia nhiều API Key bằng dấu phẩy
+    const keys = rawKeys.split(",").map(k => k.trim()).filter(Boolean);
+    const randomKey = keys.length > 0 ? keys[Math.floor(Math.random() * keys.length)] : undefined;
+
+    if (keys.length > 1) {
+      console.log(`[Key Pool] KiraAI: Đang sử dụng 1 trong ${keys.length} API Keys.`);
+    }
+
     super(
       process.env.KIRAAI_BASE_URL || "https://kiraai.vn/api/v1",
-      process.env.KIRAAI_API_KEY,
+      randomKey,
       process.env.KIRAAI_MODEL || "glm-5.3"
     );
   }
@@ -131,26 +237,79 @@ export class AnthropicProvider implements AIProvider {
     userPrompt: string;
     schema: ZodSchema<T>;
     model?: string;
+    tracking?: { userId?: string, jobId?: string, taskType: string, providerName?: string };
   }): Promise<T> {
-    const { systemPrompt, userPrompt, schema, model } = params;
-    const response = await this.client.messages.create({
-      model: model || this.defaultModel,
-      system: systemPrompt + "\n\nCRITICAL: You must output ONLY valid JSON matching the required schema. Do not output markdown, just the raw JSON. Start with {.",
-      messages: [{ role: "user", content: userPrompt }],
-      max_tokens: 4096,
-    });
-
-    const content = (response.content[0] as any)?.text;
-    if (!content) throw new Error("No content returned from LLM");
-
+    const { systemPrompt, userPrompt, schema, model, tracking } = params;
+    const start = Date.now();
+    
     try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/) || content.match(/\[[\s\S]*\]/);
-      const jsonStr = jsonMatch ? jsonMatch[0] : content;
-      const parsed = JSON.parse(jsonStr);
-      return schema.parse(parsed) as T;
-    } catch (e) {
-      console.error("Failed to parse Anthropic LLM output:", content);
-      throw new Error("Invalid JSON structure returned by LLM");
+      const response = await this.client.messages.create({
+        model: model || this.defaultModel,
+        system: systemPrompt + "\n\nCRITICAL: You must output ONLY valid JSON matching the required schema. Do not output markdown, just the raw JSON. Start with {.",
+        messages: [{ role: "user", content: userPrompt }],
+        max_tokens: 4096,
+      });
+
+      const content = (response.content[0] as any)?.text;
+      if (!content) throw new Error("No content returned from LLM");
+
+      try {
+        const jsonMatch = content.match(/\{[\s\S]*\}/) || content.match(/\[[\s\S]*\]/);
+        const jsonStr = jsonMatch ? jsonMatch[0] : content;
+        const parsed = JSON.parse(jsonStr);
+        const result = schema.parse(parsed) as T;
+        
+        if (tracking) {
+          trackAILog({
+            user_id: tracking.userId,
+            job_id: tracking.jobId,
+            provider: tracking.providerName || 'anthropic',
+            model: model || this.defaultModel,
+            task_type: tracking.taskType,
+            input_tokens: response.usage?.input_tokens || 0,
+            output_tokens: response.usage?.output_tokens || 0,
+            cost_usd: calculateCost(tracking.providerName || 'anthropic', response.usage?.input_tokens || 0, response.usage?.output_tokens || 0),
+            latency_ms: Date.now() - start,
+            status: 'success',
+            raw_response: content
+          });
+        }
+        
+        return result;
+      } catch (e: any) {
+        if (tracking) {
+          trackAILog({
+            user_id: tracking.userId,
+            job_id: tracking.jobId,
+            provider: tracking.providerName || 'anthropic',
+            model: model || this.defaultModel,
+            task_type: tracking.taskType,
+            input_tokens: response.usage?.input_tokens || 0,
+            output_tokens: response.usage?.output_tokens || 0,
+            cost_usd: calculateCost(tracking.providerName || 'anthropic', response.usage?.input_tokens || 0, response.usage?.output_tokens || 0),
+            latency_ms: Date.now() - start,
+            status: 'error',
+            error_message: `JSON Parse Error: ${e?.message}`,
+            raw_response: content
+          });
+        }
+        console.error("Failed to parse Anthropic LLM output:", content);
+        throw new Error("Invalid JSON structure returned by LLM");
+      }
+    } catch (err: any) {
+      if (tracking) {
+        trackAILog({
+            user_id: tracking.userId,
+            job_id: tracking.jobId,
+            provider: tracking.providerName || 'anthropic',
+            model: model || this.defaultModel,
+            task_type: tracking.taskType,
+            latency_ms: Date.now() - start,
+            status: 'error',
+            error_message: err?.message
+        });
+      }
+      throw err;
     }
   }
 
@@ -159,19 +318,54 @@ export class AnthropicProvider implements AIProvider {
     userPrompt: string;
     model?: string;
     temperature?: number;
+    tracking?: { userId?: string, jobId?: string, taskType: string, providerName?: string };
   }): Promise<string> {
-    const { systemPrompt, userPrompt, model, temperature } = params;
-    const response = await this.client.messages.create({
-      model: model || this.defaultModel,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
-      max_tokens: 4096,
-      temperature: temperature ?? 0.7
-    });
+    const { systemPrompt, userPrompt, model, temperature, tracking } = params;
+    const start = Date.now();
+    
+    try {
+      const response = await this.client.messages.create({
+        model: model || this.defaultModel,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+        max_tokens: 4096,
+        temperature: temperature ?? 0.7
+      });
 
-    const content = (response.content[0] as any)?.text;
-    if (content == null) throw new Error("No content returned from LLM");
-    return content;
+      const content = (response.content[0] as any)?.text;
+      if (content == null) throw new Error("No content returned from LLM");
+
+      if (tracking) {
+        trackAILog({
+          user_id: tracking.userId,
+          job_id: tracking.jobId,
+          provider: tracking.providerName || 'anthropic',
+          model: model || this.defaultModel,
+          task_type: tracking.taskType,
+          input_tokens: response.usage?.input_tokens || 0,
+          output_tokens: response.usage?.output_tokens || 0,
+          cost_usd: calculateCost(tracking.providerName || 'anthropic', response.usage?.input_tokens || 0, response.usage?.output_tokens || 0),
+          latency_ms: Date.now() - start,
+          status: 'success'
+        });
+      }
+
+      return content;
+    } catch (err: any) {
+      if (tracking) {
+        trackAILog({
+            user_id: tracking.userId,
+            job_id: tracking.jobId,
+            provider: tracking.providerName || 'anthropic',
+            model: model || this.defaultModel,
+            task_type: tracking.taskType,
+            latency_ms: Date.now() - start,
+            status: 'error',
+            error_message: err?.message
+        });
+      }
+      throw err;
+    }
   }
 }
 

@@ -133,6 +133,10 @@ Hãy tạo JSON output theo ĐÚNG cấu trúc sau (trả về mảng items, m�
   return await provider.generateStructuredOutput({
     systemPrompt,
     userPrompt,
-    schema: ExtractorResponseSchema
+    schema: ExtractorResponseSchema,
+    tracking: {
+      taskType: 'vocabulary_extraction',
+      providerName: 'hhtech'
+    }
   });
 }

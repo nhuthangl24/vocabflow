@@ -4,6 +4,7 @@ import { useRef, useState, useEffect, useMemo } from "react";
 import YouTube, { YouTubeProps } from "react-youtube";
 import { Play, Pause, SkipBack, SkipForward, RotateCcw, Check, Eye, EyeOff, Lightbulb, CheckCircle, XCircle } from "lucide-react";
 import { saveShadowingProgress } from "@/app/actions/shadowing";
+import { useAnalytics } from "@/hooks/useAnalytics";
 
 
 // Simple LCS Diff for word/character level highlighting
@@ -49,6 +50,7 @@ function computeDiff(original: string, input: string) {
 const YOUTUBE_OPTS = { width: '100%', height: '100%', playerVars: { autoplay: 0, rel: 0 } };
 
 export default function ShadowingWorkspaceClient({ assetId, videoUrl, transcript = [] }: { assetId: string, videoUrl: string, transcript: any[] }) {
+  const { trackEvent } = useAnalytics("ShadowingRoom");
   const [player, setPlayer] = useState<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -193,12 +195,14 @@ export default function ShadowingWorkspaceClient({ assetId, videoUrl, transcript
       const seekTime = transcript[index].start_time_ms / 1000;
       setCurrentTime(seekTime);
       performSeek(seekTime);
+      trackEvent("Seek", `Segment ${index}`, seekTime, { tab: activeTab, assetId });
     }
   };
 
   const handleReplay = () => {
     if (currentSegment) {
       performSeek(currentSegment.start_time_ms / 1000);
+      trackEvent("Replay", `Segment ${currentIndex}`, currentTime, { tab: activeTab, assetId });
     }
   };
 
@@ -207,10 +211,12 @@ export default function ShadowingWorkspaceClient({ assetId, videoUrl, transcript
       if (player && videoId) player.pauseVideo();
       else if (videoRef.current) videoRef.current!.pause();
       setIsPlaying(false);
+      trackEvent("Pause", `Time ${currentTime}`, currentTime, { tab: activeTab, assetId });
     } else {
       if (player && videoId) player.playVideo();
       else if (videoRef.current) videoRef.current!.play();
       setIsPlaying(true);
+      trackEvent("Play", `Time ${currentTime}`, currentTime, { tab: activeTab, assetId });
     }
   };
 

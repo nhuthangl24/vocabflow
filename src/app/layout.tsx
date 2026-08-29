@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Itim } from "next/font/google";
+import { GlobalErrorCatcher } from "@/components/GlobalErrorCatcher";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
@@ -64,28 +65,9 @@ export default function RootLayout({
       className={`${itim.variable} h-full antialiased text-slate-900 bg-slate-50 dark:bg-neutral-950 dark:text-slate-50 dark:bg-[#0a0a0a]`}
     >
       <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.addEventListener('error', function(event) {
-                if (event.message && event.message.includes('play() request was interrupted')) {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  event.stopImmediatePropagation();
-                }
-              }, true);
-              window.addEventListener('unhandledrejection', function(event) {
-                if (event.reason && (event.reason.name === 'AbortError' || (event.reason.message && event.reason.message.includes('play() request was interrupted')))) {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  event.stopImmediatePropagation();
-                }
-              }, true);
-            `
-          }}
-        />
       </head>
       <body className="min-h-full flex flex-col font-sans" suppressHydrationWarning>
+        <GlobalErrorCatcher />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

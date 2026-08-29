@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { RefreshCw, PlaySquare } from "lucide-react";
+import { Button } from "@/components/admin/ui";
 
 export default function RetryPlaylistButton({ playlistName, jobIds }: { playlistName: string, jobIds: string[] }) {
   const [retrying, setRetrying] = useState(false);
@@ -33,25 +34,26 @@ export default function RetryPlaylistButton({ playlistName, jobIds }: { playlist
   };
 
   return (
-    <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl">
+    <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center">
           <PlaySquare className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
         </div>
         <div>
           <h4 className="text-sm font-bold text-slate-900 dark:text-white">{playlistName}</h4>
-          <p className="text-xs text-slate-500 dark:text-neutral-400">{jobIds.length} video đang kẹt/lỗi</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{jobIds.length} video đang kẹt/lỗi</p>
         </div>
       </div>
       
-      <button 
+      <Button 
         onClick={handleRetryAll}
         disabled={retrying || jobIds.length === 0}
-        className={`px-4 py-2 flex items-center gap-2 text-xs font-bold rounded-lg transition-colors shadow-sm ${retrying ? 'bg-indigo-100 text-indigo-400 dark:bg-indigo-900/30' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
+        isLoading={retrying}
+        size="sm"
       >
-        <RefreshCw className={`w-3.5 h-3.5 ${retrying ? 'animate-spin' : ''}`} />
+        <RefreshCw className="w-3.5 h-3.5 mr-2" />
         {retrying ? 'Đang gửi...' : 'Khôi phục tất cả'}
-      </button>
+      </Button>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 
 export async function createMediaJob(data: {
   title: string;
@@ -92,6 +93,109 @@ export async function createMediaJob(data: {
         throw e; // rethrow the limit error so the user sees it
       }
       console.error("Failed to fetch youtube metadata", e);
+    }
+  }
+
+  // Global Deduplication (Caching)
+  if (data.type === "youtube" && data.sourceUrl) {
+    const adminSupabase = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+    
+    // Extract YouTube ID for robust matching (e.g. youtu.be/123 vs youtube.com/watch?v=123)
+    const videoIdMatch = data.sourceUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/);
+    const videoId = videoIdMatch ? videoIdMatch[1] : null;
+
+    let query = adminSupabase
+      .from("media_assets")
+      .select("*")
+      .eq("module", data.module || "vocabulary")
+      .eq("status", "ready");
+
+    if (videoId) {
+      query = query.ilike("source_url", `%${videoId}%`);
+    } else {
+      query = query.eq("source_url", data.sourceUrl);
+    }
+
+    const { data: existingAsset } = await query
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingAsset) {
+      if (existingAsset.user_id === user.id) {
+        throw new Error("Video này đã có trong thư viện của bạn.");
+      }
+
+      // Clone the media_assets row
+      const { data: newAsset, error: assetError } = await supabase
+        .from("media_assets")
+        .insert({
+          user_id: user.id,
+          title: existingAsset.title,
+          type: existingAsset.type,
+          storage_path: existingAsset.storage_path,
+          size_bytes: existingAsset.size_bytes,
+          source_url: existingAsset.source_url,
+          status: "ready", // Instantly ready!
+          module: existingAsset.module,
+          metadata: existingAsset.metadata,
+          thumbnail_url: existingAsset.thumbnail_url,
+          duration_seconds: existingAsset.duration_seconds
+        })
+        .select()
+        .single();
+
+      if (assetError) throw assetError;
+
+      // Clone transcript_segments
+      const { data: segments } = await adminSupabase
+        .from("transcript_segments")
+        .select("*")
+        .eq("media_asset_id", existingAsset.id);
+      
+      if (segments && segments.length > 0) {
+        const newSegments = segments.map(s => {
+          const { id, created_at, job_id, ...rest } = s;
+          return { ...rest, media_asset_id: newAsset.id };
+        });
+        // Bulk insert segments in chunks of 500 if there are many
+        for (let i = 0; i < newSegments.length; i += 500) {
+          await supabase.from("transcript_segments").insert(newSegments.slice(i, i + 500));
+        }
+      }
+
+      // Clone vocabulary_items
+      const { data: vocab } = await adminSupabase
+        .from("vocabulary_items")
+        .select("*")
+        .eq("media_asset_id", existingAsset.id);
+      
+      if (vocab && vocab.length > 0) {
+        const newVocab = vocab.map(v => {
+          const { id, created_at, ...rest } = v;
+          return { ...rest, media_asset_id: newAsset.id };
+        });
+        await supabase.from("vocabulary_items").insert(newVocab);
+      }
+
+      // Clone grammar_items
+      const { data: grammar } = await adminSupabase
+        .from("grammar_items")
+        .select("*")
+        .eq("media_asset_id", existingAsset.id);
+      
+      if (grammar && grammar.length > 0) {
+        const newGrammar = grammar.map(g => {
+          const { id, created_at, ...rest } = g;
+          return { ...rest, media_asset_id: newAsset.id };
+        });
+        await supabase.from("grammar_items").insert(newGrammar);
+      }
+
+      return { asset: newAsset, job: null, cached: true };
     }
   }
 

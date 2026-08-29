@@ -1,3 +1,4 @@
+import toast from "react-hot-toast";
 "use client";
 
 import { useState, useEffect } from "react";
@@ -74,6 +75,13 @@ export default function UploadMedia({ userId, isPro = false, todayCount = 0, dai
           sourceUrl: youtubeUrl,
           settings: { targetLanguage, targetCount: targetCount || 35 }
         });
+        if (res.cached) {
+          toast.success("Đã nhân bản từ hệ thống!");
+          router.push(`/library/${res.asset.id}`);
+          setUploading(false);
+          setIsOpen(false);
+          return;
+        }
         createdJob = res.job;
       }
 

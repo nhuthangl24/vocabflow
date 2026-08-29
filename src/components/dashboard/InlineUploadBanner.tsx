@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { createMediaJob } from "@/app/actions/media";
 import { fetchYouTubeCaptions } from "@/app/actions/youtube";
 import { Video, LinkIcon, Upload, Sparkles, Clipboard, AlertTriangle } from "lucide-react";
+import toast from "react-hot-toast";
 
 export default function InlineUploadBanner({ 
   userId, 
@@ -119,6 +120,12 @@ export default function InlineUploadBanner({
           settings: { targetLanguage, targetCount: targetCount || 35, module },
           module: module
         });
+        if (res.cached) {
+          toast.success("Đã nhân bản từ hệ thống!");
+          router.push(`/${module === 'shadowing' ? 'shadowing' : 'library'}/${res.asset.id}`);
+          setUploading(false);
+          return;
+        }
         createdJob = res.job;
       } else {
         // Fallback for upload via hidden file input (handled by standard click)
