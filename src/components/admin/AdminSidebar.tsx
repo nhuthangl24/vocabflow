@@ -13,11 +13,13 @@ export default function AdminSidebar({ onClose }: { onClose?: () => void }) {
   const routes = [
     { name: "Tổng quan", path: "/admin", icon: LayoutDashboard },
     { name: "Tiến trình (Tasks)", path: "/admin/tasks", icon: Activity },
+    { name: "Quản lý Gói (Plans)", path: "/admin/plans", icon: CreditCard },
     { name: "Nhà cung cấp AI", path: "/admin/providers", icon: Cpu },
     { name: "Logs Thời gian thực", path: "/admin/logs", icon: Search },
     { name: "Phân tích (Analytics)", path: "/admin/analytics", icon: LineChart },
     { name: "Uptime Center", path: "/admin/uptime", icon: ShieldAlert },
     { name: "Người dùng (CRM)", path: "/admin/users", icon: Users },
+    { name: "Kho Nội dung (Library)", path: "/admin/library", icon: Library },
     { name: "Quản lý Media", path: "/admin/media", icon: Clapperboard },
     { name: "Chi phí AI", path: "/admin/costs", icon: CreditCard },
     { name: "Cảnh báo (Alerts)", path: "/admin/alerts", icon: Bell },

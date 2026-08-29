@@ -136,7 +136,7 @@ Hãy tạo JSON output theo ĐÚNG cấu trúc sau (trả về mảng items, m�
     schema: ExtractorResponseSchema,
     tracking: {
       taskType: 'vocabulary_extraction',
-      providerName: 'hhtech'
+      providerName: settings.providerName || 'unknown'
     }
   });
 }

@@ -429,26 +429,27 @@ export function getProvider(task?: TaskType): AIProvider {
     return new AnthropicProvider();
   }
 
-  const kira = new KiraAIProvider();
-  const hhtech = new HHTECHProvider();
+  // Lazy loading to avoid unnecessary instantiation and confusing console logs
+  const getKira = () => new KiraAIProvider();
+  const getHHTech = () => new HHTECHProvider();
 
   if (task === 'shadowing') {
     const providerName = process.env.SHADOWING_PROVIDER || 'kiraai';
     if (providerName === 'kiraai') {
-      return new FallbackProvider([kira, hhtech]);
+      return new FallbackProvider([getKira(), getHHTech()]);
     }
-    return hhtech;
+    return getHHTech();
   }
 
   if (task === 'vocab') {
     const providerName = process.env.VOCAB_PROVIDER || 'hhtech';
-    return providerName === 'kiraai' ? kira : hhtech;
+    return providerName === 'kiraai' ? getKira() : getHHTech();
   }
 
   if (task === 'grammar') {
     const providerName = process.env.GRAMMAR_PROVIDER || 'hhtech';
-    return providerName === 'kiraai' ? kira : hhtech;
+    return providerName === 'kiraai' ? getKira() : getHHTech();
   }
 
-  return hhtech;
+  return getHHTech();
 }

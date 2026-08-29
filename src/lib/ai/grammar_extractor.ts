@@ -140,7 +140,7 @@ Hãy tạo JSON output theo ĐÚNG cấu trúc sau (trả về mảng items, m�
     schema: GrammarExtractorResponseSchema,
     tracking: {
       taskType: 'grammar_extraction',
-      providerName: 'hhtech'
+      providerName: settings.providerName || 'unknown'
     }
   });
 }

@@ -17,13 +17,13 @@ export default function AdminUsersClient({ initialUsers }: { initialUsers: User[
   const [users, setUsers] = useState<User[]>(initialUsers);
   const [search, setSearch] = useState("");
   const [loadingId, setLoadingId] = useState<string | null>(null);
-  const [confirmAction, setConfirmAction] = useState<{ userId: string; newPlan: "free" | "pro" } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ userId: string; newPlan: "free" | "basic" | "pro" } | null>(null);
 
   const filteredUsers = users.filter(u => 
     !search || u.email?.toLowerCase().includes(search.toLowerCase()) || u.id.includes(search)
   );
 
-  const executePlanChange = async (userId: string, newPlan: "free" | "pro") => {
+  const executePlanChange = async (userId: string, newPlan: "free" | "basic" | "pro") => {
     setLoadingId(userId);
     try {
       const res = await updateUserPlan(userId, newPlan);
@@ -82,7 +82,7 @@ export default function AdminUsersClient({ initialUsers }: { initialUsers: User[
             </thead>
             <tbody className="divide-y divide-neutral-800/50">
               {filteredUsers.map((u) => {
-                const isPro = u.user_metadata?.plan === 'pro';
+                const plan = (u.user_metadata?.plan || 'free').toLowerCase();
                 const isLoading = loadingId === u.id;
                 
                 return (
@@ -90,21 +90,26 @@ export default function AdminUsersClient({ initialUsers }: { initialUsers: User[
                     <td className="px-4 py-2.5 text-neutral-500">{u.id}</td>
                     <td className="px-4 py-2.5 text-white font-sans text-sm">{u.email}</td>
                     <td className="px-4 py-2.5">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase ${isPro ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-neutral-800 text-neutral-400 border border-neutral-700'}`}>
-                        {isPro ? 'PRO' : 'FREE'}
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase ${plan === 'pro' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : plan === 'basic' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-neutral-800 text-neutral-400 border border-neutral-700'}`}>
+                        {plan}
                       </span>
                     </td>
                     <td className="px-4 py-2.5 text-neutral-500" suppressHydrationWarning>
                       {new Date(u.created_at).toLocaleString('vi-VN')}
                     </td>
                     <td className="px-4 py-2.5 text-right space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
-                        onClick={() => setConfirmAction({ userId: u.id, newPlan: isPro ? 'free' : 'pro' })}
-                        disabled={isLoading}
-                        className="px-2 py-1 bg-neutral-800 text-neutral-300 hover:text-white rounded hover:bg-neutral-700 disabled:opacity-50 text-xs font-sans"
-                      >
-                        {isLoading ? "Đang xử lý..." : (isPro ? "Hạ cấp Free" : "Nâng cấp PRO")}
-                      </button>
+                      <div className="inline-flex gap-1">
+                        {['free', 'basic', 'pro'].map(p => (
+                          <button 
+                            key={p}
+                            onClick={() => setConfirmAction({ userId: u.id, newPlan: p as any })}
+                            disabled={isLoading || plan === p}
+                            className={`px-2 py-1 rounded text-xs font-sans uppercase transition-colors ${plan === p ? 'bg-indigo-500/20 text-indigo-400 cursor-default border border-indigo-500/30' : 'bg-neutral-800 text-neutral-300 hover:text-white hover:bg-neutral-700 disabled:opacity-50 border border-transparent'}`}
+                          >
+                            {isLoading && confirmAction?.newPlan === p && confirmAction?.userId === u.id ? "..." : p}
+                          </button>
+                        ))}
+                      </div>
                       <button className="px-2 py-1 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 rounded text-xs font-sans">
                         Timeline <ArrowRight className="w-3 h-3 inline ml-1" />
                       </button>

@@ -104,8 +104,8 @@ export default function AdminMediaClient({ initialMedia, userMap }: { initialMed
                         <span className="text-neutral-600">-</span>
                       )}
                     </td>
-                    <td className="px-4 py-2.5 text-neutral-500">
-                      {new Date(m.created_at).toLocaleDateString()}
+                    <td className="px-4 py-2.5 text-neutral-500" suppressHydrationWarning>
+                      {new Date(m.created_at).toLocaleDateString('vi-VN')}
                     </td>
                     <td className="px-4 py-2.5 text-right space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       {m.source_url && (

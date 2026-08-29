@@ -10,7 +10,7 @@ function fixPath(p: string | null | undefined) {
   // Next.js Turbopack rewrites __dirname to \ROOT\
   if (p.includes("ROOT")) {
     const relative = p.split("ROOT")[1].replace(/^[\\\/]/, '');
-    return path.join(process.cwd(), relative);
+    return path.join(/*turbopackIgnore: true*/ process.cwd(), relative);
   }
   return p;
 }

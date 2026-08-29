@@ -121,7 +121,7 @@ export default function LoginModal() {
             </p>
           </div>
 
-          <form className="space-y-5" onSubmit={handleSubmit}>
+          <form className="space-y-5" method="POST" onSubmit={handleSubmit}>
             {error && (
               <div className="rounded-xl bg-rose-50 p-4 text-sm font-medium text-rose-600 border border-rose-100 flex items-start gap-3">
                 <div className="mt-0.5 shrink-0 w-4 h-4 rounded-full bg-rose-200 flex items-center justify-center text-[10px] font-bold text-rose-700">!</div>
