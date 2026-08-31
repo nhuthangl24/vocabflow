@@ -4,18 +4,22 @@ import AdminMediaClient from "./AdminMediaClient";
 export const revalidate = 0;
 
 export default async function AdminMediaPage() {
-  const supabase = createAdminClient();
+  const adminClient = createAdminClient();
 
-  const { data: mediaAssets } = await supabase
+  // Fetch media assets
+  const { data: media } = await adminClient
     .from("media_assets")
-    .select(`*, transcript_jobs (status, created_at)`)
-    .order("created_at", { ascending: false });
+    .select("*, transcript_jobs(*)")
+    .order("created_at", { ascending: false })
+    .limit(50);
 
-  const { data: { users: authUsers } } = await supabase.auth.admin.listUsers();
-  const userMap = authUsers.reduce((acc, user) => {
-    acc[user.id] = user.email || "Unknown";
-    return acc;
-  }, {} as Record<string, string>);
+  // Fetch users for mapping
+  const { data: { users } } = await adminClient.auth.admin.listUsers();
+  const userMap = users ? Object.fromEntries(users.map(u => [u.id, u.email || 'Unknown'])) : {};
 
-  return <AdminMediaClient initialMedia={mediaAssets || []} userMap={userMap} />;
+  return (
+    <div className="w-full">
+      <AdminMediaClient initialMedia={media || []} userMap={userMap} />
+    </div>
+  );
 }

@@ -17,7 +17,11 @@ export default function PricingClient({ plans, userPlan }: { plans: any[], userP
     <>
       <div className="isolate mx-auto mt-6 grid max-w-md grid-cols-1 gap-y-6 sm:mt-8 lg:mx-0 lg:max-w-none lg:grid-cols-2 xl:grid-cols-3 lg:gap-x-6 xl:gap-x-8">
         {(plans || []).map((plan) => {
+          const currentPlanData = plans.find(p => p.name.toLowerCase() === userPlan);
+          const currentPrice = currentPlanData?.price_usd || 0;
           const isCurrentPlan = userPlan === plan.name.toLowerCase();
+          const isDowngrade = plan.price_usd < currentPrice;
+          const isDisabled = plan.is_active === false;
           const features = plan.features_list 
             ? plan.features_list.split('\n').filter((f: string) => f.trim().length > 0)
             : [
@@ -46,13 +50,21 @@ export default function PricingClient({ plans, userPlan }: { plans: any[], userP
               </p>
               
               {isCurrentPlan ? (
-                <button disabled className={`mt-4 block w-full rounded-md py-1.5 px-3 text-center text-sm font-semibold leading-6 shadow-sm opacity-80 cursor-not-allowed ${plan.is_recommended ? 'text-yellow-950 bg-amber-400' : 'text-gray-600 ring-1 ring-inset ring-gray-200 bg-gray-50 dark:bg-neutral-900 dark:text-neutral-400'}`}>
+                <button disabled className={`mt-6 block w-full rounded-xl py-3 px-3 text-center text-sm font-bold shadow-sm cursor-not-allowed ${plan.is_recommended ? 'text-yellow-900 bg-amber-200/50 border border-amber-300 dark:bg-amber-900/20 dark:border-amber-700/50 dark:text-amber-500' : 'text-gray-500 border border-gray-200 bg-gray-50 dark:bg-neutral-900/50 dark:border-neutral-800 dark:text-neutral-500'}`}>
                   Đang sử dụng Gói này
+                </button>
+              ) : isDisabled ? (
+                <button disabled className="mt-6 block w-full rounded-xl py-3 px-3 text-center text-sm font-bold shadow-sm opacity-50 cursor-not-allowed text-gray-400 bg-gray-100 border border-gray-200 dark:bg-neutral-900 dark:border-neutral-800 dark:text-neutral-600">
+                  Tạm ngừng đăng ký
+                </button>
+              ) : isDowngrade ? (
+                <button disabled className="mt-6 block w-full rounded-xl py-3 px-3 text-center text-sm font-bold shadow-sm opacity-50 cursor-not-allowed text-gray-400 bg-gray-100 border border-gray-200 dark:bg-neutral-900 dark:border-neutral-800 dark:text-neutral-600">
+                  Không khả dụng (Gói thấp hơn)
                 </button>
               ) : (
                 <button 
                   onClick={() => setSelectedPlan(plan)}
-                  className="mt-4 block w-full rounded-md py-1.5 px-3 text-center text-sm font-semibold leading-6 text-white bg-blue-600 hover:bg-blue-500 shadow-sm transition-colors"
+                  className={`mt-6 block w-full rounded-xl py-3 px-3 text-center text-sm font-bold shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] ${plan.is_recommended ? 'bg-gradient-to-r from-amber-400 to-amber-300 text-yellow-950 shadow-amber-500/20 hover:from-amber-300 hover:to-amber-200' : 'bg-gray-900 text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200'}`}
                 >
                   {plan.price_usd > 0 ? 'Nâng cấp ngay' : 'Sử dụng'}
                 </button>

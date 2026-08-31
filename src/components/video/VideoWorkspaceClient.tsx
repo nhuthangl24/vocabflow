@@ -1,13 +1,36 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Volume2, ExternalLink } from "lucide-react";
+import { Volume2, ExternalLink, RefreshCw, AlertTriangle } from "lucide-react";
+import { useRouter } from "next/navigation";
 
-export default function VideoWorkspaceClient({ videoUrl, vocabulary, grammar = [], userId, targetLanguage = "English" }: { videoUrl: string, vocabulary: any[], grammar?: any[], userId: string, targetLanguage?: string }) {
+export default function VideoWorkspaceClient({ jobId, videoUrl, vocabulary, grammar = [], userId, targetLanguage = "English", targetCount = 35, isGenerating = false }: { jobId?: string, videoUrl: string, vocabulary: any[], grammar?: any[], userId: string, targetLanguage?: string, targetCount?: number, isGenerating?: boolean }) {
+  const router = useRouter();
   const playerRef = useRef<any>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
   useEffect(() => setIsMounted(true), []);
+
+  const handleRetry = async () => {
+    if (!jobId) return;
+    setIsRetrying(true);
+    try {
+      await fetch("/api/webhooks/transcription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId }),
+        keepalive: true
+      });
+      // Wait a bit for DB update then refresh
+      setTimeout(() => {
+        router.refresh();
+      }, 1500);
+    } catch (e) {
+      console.error(e);
+      setIsRetrying(false);
+    }
+  };
 
   // Suppress the annoying ReactPlayer AbortError in Next.js Dev Mode
   useEffect(() => {
@@ -28,6 +51,17 @@ export default function VideoWorkspaceClient({ videoUrl, vocabulary, grammar = [
       window.removeEventListener('unhandledrejection', handleUnhandledRejection);
     };
   }, []);
+
+  // Auto-refresh if generating
+  useEffect(() => {
+    if (isGenerating) {
+      const interval = setInterval(() => {
+        router.refresh();
+      }, 5000); // 5 seconds
+      return () => clearInterval(interval);
+    }
+  }, [isGenerating, router]);
+
   const [activeTab, setActiveTab] = useState<"vocab" | "grammar">("vocab");
   const [selectedVocab, setSelectedVocab] = useState<any | null>(null);
   const [selectedGrammar, setSelectedGrammar] = useState<any | null>(null);
@@ -185,41 +219,90 @@ export default function VideoWorkspaceClient({ videoUrl, vocabulary, grammar = [
           </div>
           
           <div className="p-4 space-y-8">
-            {/* Section: Single Words */}
-            <div>
-              <h3 className="text-xl font-bold text-gray-800 dark:text-neutral-100 mb-4 border-b pb-2 dark:text-neutral-100">Từ đơn (Single Words)</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredVocabulary.filter(v => !v.term.trim().includes(' ')).map((vocab, index) => (
-                  <div key={vocab.id} className="relative" style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'both' }}>
-                    {/* The Static Background Card */}
-                    <div 
-                      className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 h-full flex flex-col justify-between border-gray-200 hover:border-blue-300 hover:shadow-md bg-white dark:bg-[#0a0a0a]`}
-                      onClick={() => setSelectedVocab(vocab)}
-                    >
-                      <div>
-                        <div className="flex justify-between items-start mb-2">
-                          <h3 className="font-bold text-lg text-gray-900 dark:text-white capitalize">{vocab.term}</h3>
-                          <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${getLevelColor(vocab.level)}`}>{vocab.level}</span>
-                        </div>
-                        <p className="text-gray-600 dark:text-neutral-300 line-clamp-2 first-letter:uppercase dark:text-neutral-300">{vocab.meaning_vi}</p>
-                      </div>
-                      <div className="mt-4 flex justify-between items-center">
-                        <span className="text-xs text-gray-400 font-medium uppercase tracking-wider dark:text-neutral-400">{vocab.part_of_speech}</span>
-                        <span className="text-blue-600 font-bold text-xs uppercase tracking-widest bg-blue-50 dark:bg-neutral-800 px-2 py-1 rounded hover:bg-blue-100 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700">Chạm để xem</span>
-                      </div>
-                    </div>
+            {/* Banner for processing status */}
+            {(isGenerating || (vocabulary.length > 0 && vocabulary.length < targetCount)) && (
+              <div className={`p-4 rounded-lg flex items-start gap-3 ${isGenerating ? 'bg-blue-50 border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800/50' : 'bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-800/50'}`}>
+                {isGenerating ? (
+                  <RefreshCw className="w-5 h-5 text-blue-500 animate-spin shrink-0 mt-0.5" />
+                ) : (
+                  <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                )}
+                <div>
+                  <h3 className={`font-medium ${isGenerating ? 'text-blue-800 dark:text-blue-300' : 'text-amber-800 dark:text-amber-300'}`}>
+                    {isGenerating 
+                      ? `AI đang trích xuất từ vựng (${vocabulary.length}/${targetCount})...` 
+                      : `Đã tạo được ${vocabulary.length} từ (Mục tiêu: ${targetCount})`}
+                  </h3>
+                  <p className={`text-sm mt-1 ${isGenerating ? 'text-blue-600 dark:text-blue-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                    {isGenerating 
+                      ? 'Dữ liệu mới sẽ tự động xuất hiện. Vui lòng đợi trong giây lát.'
+                      : 'Một số từ bị bỏ qua do trùng lặp nội dung hoặc độ dài video có giới hạn.'}
+                  </p>
+                </div>
+              </div>
+            )}
 
-                  </div>
-                ))}
-                {filteredVocabulary.filter(v => !v.term.trim().includes(' ')).length === 0 && (
-                  <div className="text-gray-500 dark:text-neutral-400 italic dark:text-neutral-400">Không có từ đơn nào ở cấp độ này.</div>
+            {!isGenerating && vocabulary.length === 0 ? (
+              <div className="py-16 text-center flex flex-col items-center justify-center">
+                <AlertTriangle className="w-12 h-12 text-amber-500 mb-4 opacity-80" />
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Không tìm thấy từ vựng</h3>
+                <p className="text-gray-500 dark:text-neutral-400 max-w-md mx-auto mb-6">
+                  AI không thể trích xuất được từ vựng nào từ video này. Nguyên nhân có thể do kết nối bị lỗi hoặc video không có giọng nói rõ ràng.
+                </p>
+                {jobId && (
+                  <button 
+                    onClick={handleRetry}
+                    disabled={isRetrying}
+                    className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg font-medium transition-colors"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isRetrying ? 'animate-spin' : ''}`} />
+                    {isRetrying ? 'Đang khởi động lại...' : 'Thử lại ngay'}
+                  </button>
                 )}
               </div>
-            </div>
+            ) : isGenerating && vocabulary.length === 0 ? (
+              <div className="py-12 text-center flex flex-col items-center justify-center">
+                <RefreshCw className="w-10 h-10 text-blue-500 animate-spin mb-4 opacity-80" />
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Đang phân tích dữ liệu...</h3>
+                <p className="text-gray-500 dark:text-neutral-400">Từ vựng sẽ xuất hiện tại đây ngay khi AI xử lý xong các phần đầu tiên.</p>
+              </div>
+            ) : (
+              <>
+                {/* Section: Single Words */}
+                <div>
+                  <h3 className="text-xl font-bold text-gray-800 dark:text-neutral-100 mb-4 border-b pb-2 dark:text-neutral-100">Từ đơn (Single Words)</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredVocabulary.filter(v => !v.term.trim().includes(' ')).map((vocab, index) => (
+                      <div key={vocab.id} className="relative" style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'both' }}>
+                        {/* The Static Background Card */}
+                        <div 
+                          className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 h-full flex flex-col justify-between border-gray-200 hover:border-blue-300 hover:shadow-md bg-white dark:bg-[#0a0a0a]`}
+                          onClick={() => setSelectedVocab(vocab)}
+                        >
+                          <div>
+                            <div className="flex justify-between items-start mb-2">
+                              <h3 className="font-bold text-lg text-gray-900 dark:text-white capitalize">{vocab.term}</h3>
+                              <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${getLevelColor(vocab.level)}`}>{vocab.level}</span>
+                            </div>
+                            <p className="text-gray-600 dark:text-neutral-300 line-clamp-2 first-letter:uppercase dark:text-neutral-300">{vocab.meaning_vi}</p>
+                          </div>
+                          <div className="mt-4 flex justify-between items-center">
+                            <span className="text-xs text-gray-400 font-medium uppercase tracking-wider dark:text-neutral-400">{vocab.part_of_speech}</span>
+                            <span className="text-blue-600 font-bold text-xs uppercase tracking-widest bg-blue-50 dark:bg-neutral-800 px-2 py-1 rounded hover:bg-blue-100 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700">Chạm để xem</span>
+                          </div>
+                        </div>
+
+                      </div>
+                    ))}
+                    {filteredVocabulary.filter(v => !v.term.trim().includes(' ')).length === 0 && (
+                      <div className="text-gray-500 dark:text-neutral-400 italic dark:text-neutral-400">Không có từ đơn nào ở cấp độ này.</div>
+                    )}
+                  </div>
+                </div>
 
             {/* Section: Phrases & Idioms */}
             <div>
-              <h3 className="text-xl font-bold text-gray-800 dark:text-neutral-100 mb-4 border-b pb-2 dark:text-neutral-100">Cụm từ & Thành ngữ (Phrases / Idioms)</h3>
+              <h3 className="text-xl font-bold text-gray-800 dark:text-neutral-100 mb-4 border-b pb-2 dark:text-neutral-100 mt-8">Cụm từ & Thành ngữ (Phrases / Idioms)</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredVocabulary.filter(v => v.term.trim().includes(' ')).map((vocab, index) => (
                   <div key={vocab.id} className="relative" style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'both' }}>
@@ -248,6 +331,8 @@ export default function VideoWorkspaceClient({ videoUrl, vocabulary, grammar = [
                 )}
               </div>
             </div>
+              </>
+            )}
           </div>
         </div>
       )}

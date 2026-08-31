@@ -4,6 +4,7 @@ import InlineUploadBanner from "@/components/dashboard/InlineUploadBanner";
 import RecentVideosClient from "@/components/dashboard/RecentVideosClient";
 import { Clock, Layers, TrendingUp, Sparkles, Video, Zap, FileText, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
+import { getUserPlanFeatures } from "@/lib/plans";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -17,15 +18,12 @@ export default async function DashboardPage() {
   // Check if user is Admin
   const adminEmails = process.env.ADMIN_EMAILS?.split(',') || [];
   const isAdmin = user && user.email && adminEmails.includes(user.email);
-  const isPro = user?.user_metadata?.plan === 'pro'; 
 
   // Fetch plan dynamically
-  const userPlanName = (user?.user_metadata?.plan || 'free').toUpperCase();
-  const { data: planData } = await supabase.from('plans').select('daily_video_limit').ilike('name', userPlanName).single();
-  let dailyLimit = isAdmin ? 999999 : 2;
-  if (planData && !isAdmin) {
-    dailyLimit = planData.daily_video_limit === 0 ? 999999 : planData.daily_video_limit;
-  }
+  const planFeatures = await getUserPlanFeatures(user);
+  const isPro = planFeatures.name === 'PRO' || planFeatures.name === 'LIFETIME' || isAdmin;
+  const dailyLimit = planFeatures.daily_video_limit;
+  const maxVocab = planFeatures.max_vocabulary_per_video;
 
   if (user) {
     const today = new Date();
@@ -95,7 +93,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Hero Banner for Uploading */}
-      <InlineUploadBanner userId={user?.id || ""} isPro={isPro} todayCount={todayCount} dailyLimit={dailyLimit} />
+      <InlineUploadBanner userId={user?.id || ""} isPro={!!isPro} todayCount={todayCount} dailyLimit={dailyLimit} maxVocab={maxVocab} />
 
       {/* Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

@@ -1,6 +1,7 @@
 import { z, ZodSchema } from "zod";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
+import { jsonrepair } from "jsonrepair";
 
 import { trackAILog } from "../analytics";
 
@@ -41,6 +42,7 @@ export class OpenAICompatibleProvider implements AIProvider {
     this.client = new OpenAI({
       baseURL: baseURL,
       apiKey: apiKey,
+      timeout: 180000, // 180 seconds timeout for large tasks
     });
     this.defaultModel = defaultModel || "gpt-4o-mini";
   }
@@ -67,14 +69,25 @@ export class OpenAICompatibleProvider implements AIProvider {
       });
 
       usage = response.usage || usage;
-      const content = response.choices[0]?.message?.content;
-      if (!content) throw new Error("No content returned from LLM");
+      const choices = (response as any).choices;
+      const content = choices && choices.length > 0 ? choices[0]?.message?.content : null;
+      if (!content) throw new Error("No content returned from LLM or choices is undefined");
 
       let jsonStr = content;
       try {
         const jsonMatch = content.match(/\{[\s\S]*\}/) || content.match(/\[[\s\S]*\]/);
         jsonStr = jsonMatch ? jsonMatch[0] : content;
-        jsonStr = jsonStr.replace(/,\s*([\]}])/g, '$1');
+        
+        // Use jsonrepair to fix truncated or malformed JSON perfectly
+        try {
+          jsonStr = jsonrepair(jsonStr);
+        } catch (repairErr) {
+          console.warn("jsonrepair failed, attempting manual basic fix...");
+          jsonStr = jsonStr.replace(/,\s*([\]}])/g, '$1');
+          if (jsonStr.lastIndexOf('}') < jsonStr.lastIndexOf('{')) jsonStr += '}';
+          if (jsonStr.lastIndexOf(']') < jsonStr.lastIndexOf('[')) jsonStr += ']';
+        }
+
         const parsed = JSON.parse(jsonStr);
         const result = schema.parse(parsed) as T;
         
@@ -228,6 +241,7 @@ export class AnthropicProvider implements AIProvider {
     this.client = new Anthropic({
       baseURL: process.env.ANTHROPIC_BASE_URL,
       apiKey: process.env.ANTHROPIC_API_KEY,
+      timeout: 180000,
     });
     this.defaultModel = process.env.ANTHROPIC_MODEL || "claude-3-5-haiku-20241022";
   }
@@ -255,7 +269,16 @@ export class AnthropicProvider implements AIProvider {
 
       try {
         const jsonMatch = content.match(/\{[\s\S]*\}/) || content.match(/\[[\s\S]*\]/);
-        const jsonStr = jsonMatch ? jsonMatch[0] : content;
+        let jsonStr = jsonMatch ? jsonMatch[0] : content;
+        
+        try {
+          jsonStr = jsonrepair(jsonStr);
+        } catch (repairErr) {
+          jsonStr = jsonStr.replace(/,\s*([\]}])/g, '$1');
+          if (jsonStr.lastIndexOf('}') < jsonStr.lastIndexOf('{')) jsonStr += '}';
+          if (jsonStr.lastIndexOf(']') < jsonStr.lastIndexOf('[')) jsonStr += ']';
+        }
+        
         const parsed = JSON.parse(jsonStr);
         const result = schema.parse(parsed) as T;
         
@@ -371,26 +394,62 @@ export class AnthropicProvider implements AIProvider {
 
 export class FallbackProvider implements AIProvider {
   private providers: AIProvider[];
+  private circuitBreakerState: Map<string, { failures: number, lastFailure: number }> = new Map();
+  private readonly MAX_FAILURES = 3;
+  private readonly COOLDOWN_MS = 60000; // 1 phút cooldown
 
   constructor(providers: AIProvider[]) {
     this.providers = providers;
   }
 
+  private isCircuitOpen(providerName: string): boolean {
+    const state = this.circuitBreakerState.get(providerName);
+    if (!state) return false;
+    
+    if (state.failures >= this.MAX_FAILURES) {
+      const timeSinceFailure = Date.now() - state.lastFailure;
+      if (timeSinceFailure < this.COOLDOWN_MS) {
+        return true; // Circuit is OPEN (tripped)
+      } else {
+        // Half-open: Reset state to allow a test request
+        this.circuitBreakerState.delete(providerName);
+        return false; 
+      }
+    }
+    return false;
+  }
+
+  private recordFailure(providerName: string) {
+    const state = this.circuitBreakerState.get(providerName) || { failures: 0, lastFailure: 0 };
+    state.failures += 1;
+    state.lastFailure = Date.now();
+    this.circuitBreakerState.set(providerName, state);
+  }
+
+  private recordSuccess(providerName: string) {
+    this.circuitBreakerState.delete(providerName);
+  }
+
   async generateStructuredOutput<T>(params: any): Promise<T> {
     let lastError: any;
-    const MAX_RETRIES = 2; // Retry each provider up to 2 times
+    const MAX_RETRIES = 1;
     
     for (const provider of this.providers) {
+      const pName = provider.constructor.name;
+      if (this.isCircuitOpen(pName)) {
+        console.warn(`[CircuitBreaker] Provider ${pName} is OPEN. Skipping.`);
+        continue;
+      }
+
       for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
-          return await provider.generateStructuredOutput<T>(params);
-        } catch (err: any) {
-          console.warn(`[FallbackProvider] Provider failed (Attempt ${attempt}/${MAX_RETRIES}). Error:`, err?.message || err);
-          lastError = err;
-          if (attempt < MAX_RETRIES) {
-             // Wait 2 seconds before retrying
-             await new Promise(resolve => setTimeout(resolve, 2000));
-          }
+          const result = await provider.generateStructuredOutput<T>(params);
+          this.recordSuccess(pName);
+          return result;
+        } catch (error) {
+          console.warn(`[Fallback] Provider failed:`, error);
+          lastError = error;
+          this.recordFailure(pName);
         }
       }
       console.warn(`[FallbackProvider] Provider exhausted all retries, switching to next provider...`);
@@ -400,19 +459,24 @@ export class FallbackProvider implements AIProvider {
 
   async generateText(params: any): Promise<string> {
     let lastError: any;
-    const MAX_RETRIES = 2;
+    const MAX_RETRIES = 1;
     
     for (const provider of this.providers) {
+      const pName = provider.constructor.name;
+      if (this.isCircuitOpen(pName)) {
+        console.warn(`[CircuitBreaker] Provider ${pName} is OPEN. Skipping.`);
+        continue;
+      }
+
       for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
-          return await provider.generateText(params);
-        } catch (err: any) {
-          console.warn(`[FallbackProvider] Provider failed (Attempt ${attempt}/${MAX_RETRIES}). Error:`, err?.message || err);
-          lastError = err;
-          if (attempt < MAX_RETRIES) {
-             // Wait 2 seconds before retrying
-             await new Promise(resolve => setTimeout(resolve, 2000));
-          }
+          const result = await provider.generateText(params);
+          this.recordSuccess(pName);
+          return result;
+        } catch (error) {
+          console.warn(`[Fallback] Provider failed:`, error);
+          lastError = error;
+          this.recordFailure(pName);
         }
       }
       console.warn(`[FallbackProvider] Provider exhausted all retries, switching to next provider...`);
@@ -443,13 +507,19 @@ export function getProvider(task?: TaskType): AIProvider {
 
   if (task === 'vocab') {
     const providerName = process.env.VOCAB_PROVIDER || 'hhtech';
-    return providerName === 'kiraai' ? getKira() : getHHTech();
+    if (providerName === 'kiraai') {
+      return new FallbackProvider([getKira(), getHHTech()]);
+    }
+    return new FallbackProvider([getHHTech(), getKira()]);
   }
 
   if (task === 'grammar') {
     const providerName = process.env.GRAMMAR_PROVIDER || 'hhtech';
-    return providerName === 'kiraai' ? getKira() : getHHTech();
+    if (providerName === 'kiraai') {
+      return new FallbackProvider([getKira(), getHHTech()]);
+    }
+    return new FallbackProvider([getHHTech(), getKira()]);
   }
 
-  return getHHTech();
+  return new FallbackProvider([getHHTech(), getKira()]);
 }

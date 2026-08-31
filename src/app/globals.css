@@ -3,7 +3,42 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  /* Use the font variable injected by Next.js Itim font */
+  /* Colors */
+  --color-primary-50: #eef2ff;
+  --color-primary-500: #6366f1;
+  --color-primary-600: #4f46e5;
+  
+  /* Animations */
+  --animate-fade-in-up: fade-in-up 0.5s ease-out forwards;
+  --animate-pulse-soft: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  
+  @keyframes fade-in-up {
+    0% {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes pulse-soft {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+  }
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.dark .glass-panel {
+  background: rgba(15, 15, 17, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 body {
@@ -103,3 +138,8 @@ input[type='number'] {
     height: 0 !important;
   }
 }
+
+.preserve-3d { transform-style: preserve-3d; }
+.backface-hidden { backface-visibility: hidden; }
+.rotate-y-180 { transform: rotateY(180deg); }
+

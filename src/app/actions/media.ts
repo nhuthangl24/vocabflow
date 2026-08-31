@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { getUserPlanFeatures } from "@/lib/plans";
 
 export async function createMediaJob(data: {
   title: string;
@@ -11,6 +12,7 @@ export async function createMediaJob(data: {
   sourceUrl?: string;
   settings?: any;
   module?: string;
+  force?: boolean;
 }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -32,27 +34,25 @@ export async function createMediaJob(data: {
     .eq("module", "vocabulary");
 
   // Fetch user's plan dynamically
-  const userPlanName = (user.user_metadata?.plan || 'free').toUpperCase();
-  const { data: planData } = await supabase.from('plans').select('daily_video_limit, max_video_duration_minutes, enable_shadowing').ilike('name', userPlanName).single();
+  const planFeatures = await getUserPlanFeatures(user);
+
+  let dailyLimit = planFeatures.daily_video_limit;
+  let maxDurationMinutes = planFeatures.max_video_duration_minutes;
+  let maxVocab = planFeatures.max_vocabulary_per_video;
 
   const adminEmails = process.env.ADMIN_EMAILS?.split(',') || [];
   const isAdmin = user.email && adminEmails.includes(user.email);
-  
-  let dailyLimit = 2; // Default fallback
-  let maxDurationMinutes = 25; // Default fallback
-  
-  if (planData) {
-    dailyLimit = planData.daily_video_limit === 0 ? 999999 : planData.daily_video_limit;
-    maxDurationMinutes = planData.max_video_duration_minutes === 0 ? 999999 : planData.max_video_duration_minutes;
-  }
-  if (isAdmin) {
-    dailyLimit = 999999;
-    maxDurationMinutes = 999999;
+
+  // Enforce maxVocab limit
+  if (data.settings && data.settings.targetCount && typeof data.settings.targetCount === 'number') {
+    if (data.settings.targetCount > maxVocab) {
+       data.settings.targetCount = maxVocab;
+    }
   }
 
   // Bỏ qua check limit nếu module là shadowing VÀ gói cước cho phép shadowing (hoặc là admin)
   const isShadowingModule = data.module === 'shadowing';
-  if (isShadowingModule && !isAdmin && !planData?.enable_shadowing) {
+  if (isShadowingModule && !isAdmin && !planFeatures.enable_shadowing) {
     throw new Error(`Gói cước hiện tại của bạn không hỗ trợ tính năng Phòng luyện Shadowing. Hãy nâng cấp!`);
   }
 
@@ -97,7 +97,7 @@ export async function createMediaJob(data: {
   }
 
   // Global Deduplication (Caching)
-  if (data.type === "youtube" && data.sourceUrl) {
+  if (data.type === "youtube" && data.sourceUrl && !data.force) {
     const adminSupabase = createAdminClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -229,7 +229,12 @@ export async function createMediaJob(data: {
     .select()
     .single();
 
-  if (jobError) throw jobError;
+  if (jobError) {
+    // COMPENSATION TRANSACTION: Rollback media_asset creation if job creation fails
+    console.error("Job creation failed, rolling back media asset creation.", jobError);
+    await supabase.from("media_assets").delete().eq("id", asset.id);
+    throw jobError;
+  }
 
   // Do NOT trigger webhook here because Next.js will abort the fetch when the action returns.
   // Instead, the client component will call the webhook directly using the returned job id.

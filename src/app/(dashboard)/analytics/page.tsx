@@ -80,7 +80,7 @@ export default async function AnalyticsPage() {
 
   // Compute current streak
   if (activeDates.has(todayStr) || activeDates.has(yesterdayStr)) {
-    let dateToCheck = activeDates.has(todayStr) ? new Date(today) : new Date(yesterday);
+    const dateToCheck = activeDates.has(todayStr) ? new Date(today) : new Date(yesterday);
     while (true) {
       const dStr = getLocalDateStr(dateToCheck);
       if (activeDates.has(dStr)) {

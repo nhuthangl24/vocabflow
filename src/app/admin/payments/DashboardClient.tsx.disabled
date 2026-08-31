@@ -1,0 +1,91 @@
+"use client";
+
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { DollarSign, ShoppingCart, TrendingUp, AlertCircle, RefreshCcw } from 'lucide-react';
+
+function MetricCard({ title, value, subtext, icon: Icon, isWarning = false }: any) {
+  return (
+    <div className={`bg-[#0a0a0a] border rounded-lg p-5 ${isWarning ? 'border-amber-500/30 bg-amber-500/5' : 'border-neutral-800'}`}>
+      <div className="flex justify-between items-start">
+        <div>
+          <p className="text-sm font-medium text-neutral-400">{title}</p>
+          <h3 className={`text-2xl font-bold mt-1 ${isWarning ? 'text-amber-500' : 'text-white'}`}>{value}</h3>
+        </div>
+        <div className={`p-2 rounded-lg ${isWarning ? 'bg-amber-500/20 text-amber-500' : 'bg-neutral-900 text-neutral-400'}`}>
+          <Icon className="w-5 h-5" />
+        </div>
+      </div>
+      {subtext && <p className="text-xs text-neutral-500 mt-3">{subtext}</p>}
+    </div>
+  );
+}
+
+export function DashboardClient({ stats }: { stats: any }) {
+  const formatVND = (amount: number) => `₫${amount.toLocaleString('vi-VN')}`;
+
+  return (
+    <div className="space-y-6">
+      
+      {/* Primary Metrics */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard 
+          title="Total Revenue" 
+          value={formatVND(stats.totalRevenue)} 
+          subtext={`Today: ${formatVND(stats.todayRevenue)}`}
+          icon={DollarSign}
+        />
+        <MetricCard 
+          title="Total Orders" 
+          value={stats.totalOrders.toString()} 
+          subtext={`Today: ${stats.todayOrders} new orders`}
+          icon={ShoppingCart}
+        />
+        <MetricCard 
+          title="Pending Approval" 
+          value={stats.pendingOrdersCount.toString()} 
+          subtext={`Value: ${formatVND(stats.pendingRevenue)}`}
+          icon={AlertCircle}
+          isWarning={stats.pendingOrdersCount > 0}
+        />
+        <MetricCard 
+          title="Refunded" 
+          value={formatVND(stats.refundedRevenue)} 
+          subtext="Total amount refunded"
+          icon={RefreshCcw}
+        />
+      </div>
+
+      {/* Chart Section */}
+      <div className="bg-[#0a0a0a] border border-neutral-800 rounded-lg p-6">
+        <div className="flex items-center gap-2 mb-6">
+          <TrendingUp className="w-5 h-5 text-emerald-500" />
+          <h2 className="text-lg font-semibold text-white">Revenue (Last 7 Days)</h2>
+        </div>
+        
+        <div className="h-[300px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={stats.chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
+              <XAxis dataKey="date" stroke="#737373" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis 
+                stroke="#737373" 
+                fontSize={12} 
+                tickLine={false} 
+                axisLine={false}
+                tickFormatter={(value) => `₫${(value / 1000).toLocaleString('vi-VN')}k`}
+              />
+              <Tooltip 
+                cursor={{ fill: '#171717' }}
+                contentStyle={{ backgroundColor: '#0a0a0a', borderColor: '#262626', borderRadius: '8px' }}
+                itemStyle={{ color: '#10b981' }}
+                formatter={(value: number) => [formatVND(value), 'Revenue']}
+              />
+              <Bar dataKey="revenue" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={50} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+    </div>
+  );
+}

@@ -47,7 +47,7 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
   // Fetch vocabulary & grammar
   let vocabulary = [];
   let grammar = [];
-  if (job && job.status === "completed") {
+  if (job && (job.status === "completed" || job.status === "analyzing" || job.status === "failed")) {
     const { data: vocabData } = await adminClient
       .from("vocabulary_items")
       .select("*")
@@ -73,6 +73,13 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
     if (segments) transcript = segments;
   }
 
+  const isGenerating = job?.status === "analyzing" || job?.status === "transcribing" || job?.status === "queued" || job?.status === "extracting_audio";
+  const targetCount = job?.settings?.targetCount ? Number(job.settings.targetCount) : 35;
+  const isSufficientVocab = vocabulary.length > 0 && vocabulary.length >= Math.floor(targetCount * (2 / 3));
+  
+  // Show workspace if it's completed, OR if it has sufficient vocab, OR if it failed but we have some vocab.
+  const showWorkspace = asset.status === "ready" || job?.status === "completed" || isSufficientVocab || (job?.status === "failed" && vocabulary.length > 0);
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-6 flex flex-col gap-4">
@@ -88,16 +95,20 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
         </div>
       </div>
       
-      {asset.status !== "ready" ? (
-        <ProcessingStatusClient jobId={job?.id} assetId={asset.id} />
-      ) : (
+      
+      {showWorkspace ? (
         <VideoWorkspaceClient 
+          jobId={job?.id}
           videoUrl={videoUrl} 
           vocabulary={vocabulary} 
           grammar={grammar}
           userId={user.id} 
           targetLanguage={job?.settings?.targetLanguage || "English"}
+          targetCount={targetCount}
+          isGenerating={isGenerating}
         />
+      ) : (
+        <ProcessingStatusClient jobId={job?.id} assetId={asset.id} />
       )}
     </div>
   );

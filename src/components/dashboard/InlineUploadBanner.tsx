@@ -14,13 +14,15 @@ export default function InlineUploadBanner({
   isPro = false,
   todayCount = 0,
   dailyLimit = 2,
-  module = 'vocabulary'
+  module = 'vocabulary',
+  maxVocab
 }: { 
   userId: string, 
   isPro?: boolean,
   todayCount?: number,
   dailyLimit?: number,
-  module?: 'vocabulary' | 'shadowing'
+  module?: 'vocabulary' | 'shadowing',
+  maxVocab?: number
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -122,7 +124,7 @@ export default function InlineUploadBanner({
         });
         if (res.cached) {
           toast.success("Đã nhân bản từ hệ thống!");
-          router.push(`/${module === 'shadowing' ? 'shadowing' : 'library'}/${res.asset.id}`);
+          router.push(`/${module === 'shadowing' ? 'shadowing' : 'video'}/${res.asset.id}`);
           setUploading(false);
           return;
         }
@@ -166,8 +168,11 @@ export default function InlineUploadBanner({
         fetch("/api/webhooks/transcription", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ jobId: createdJob.id })
+          body: JSON.stringify({ jobId: createdJob.id }),
+          keepalive: true
         }).catch(e => console.error("Webhook failed:", e));
+        
+        router.push(`/${module === 'shadowing' ? 'shadowing' : 'video'}/${createdJob.media_asset_id}`);
       }
 
     } catch (err: any) {
@@ -214,15 +219,24 @@ export default function InlineUploadBanner({
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors bg-white dark:bg-neutral-900 text-indigo-600 dark:text-neutral-200 shadow-sm border border-slate-200 dark:border-neutral-700"
+                  onClick={() => setActiveTab('youtube')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${activeTab === 'youtube' ? 'bg-white dark:bg-neutral-900 text-indigo-600 dark:text-neutral-200 shadow-sm border border-slate-200 dark:border-neutral-700' : 'text-slate-500 hover:text-slate-700 dark:text-neutral-500 dark:hover:text-neutral-300'}`}
                 >
                   <LinkIcon className="w-3.5 h-3.5" />
                   YouTube Link
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('upload')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${activeTab === 'upload' ? 'bg-white dark:bg-neutral-900 text-indigo-600 dark:text-neutral-200 shadow-sm border border-slate-200 dark:border-neutral-700' : 'text-slate-500 hover:text-slate-700 dark:text-neutral-500 dark:hover:text-neutral-300'}`}
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  Tải lên Video/Audio
+                </button>
               </div>
               
               {/* Usage Count Display */}
-              {dailyLimit > 0 && dailyLimit < 999999 && (
+              {module === 'shadowing' && dailyLimit > 0 && dailyLimit < 999999 && (
                 <div className="text-xs font-medium text-slate-500 dark:text-neutral-400 bg-white dark:bg-neutral-900 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-neutral-700 shadow-sm">
                   Lượt dùng: <span className="text-indigo-600 dark:text-indigo-400 font-bold">{todayCount}</span> / {dailyLimit}
                 </div>
@@ -232,29 +246,41 @@ export default function InlineUploadBanner({
             {/* Main Input Row */}
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="flex-1 relative">
-                <input
-                  type="url"
-                  required
-                  value={youtubeUrl}
-                  onChange={(e) => setYoutubeUrl(e.target.value)}
-                  placeholder="Dán link YouTube vào đây..."
-                  className="w-full h-11 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg pl-4 pr-10 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm"
-                />
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      const text = await navigator.clipboard.readText();
-                      if (text) setYoutubeUrl(text);
-                    } catch (err) {
-                      console.error('Failed to read clipboard contents: ', err);
-                    }
-                  }}
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
-                  title="Dán link"
-                >
-                  <Clipboard className="w-4 h-4" />
-                </button>
+                {activeTab === 'youtube' ? (
+                  <>
+                    <input
+                      type="url"
+                      required
+                      value={youtubeUrl}
+                      onChange={(e) => setYoutubeUrl(e.target.value)}
+                      placeholder="Dán link YouTube vào đây..."
+                      className="w-full h-11 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg pl-4 pr-10 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          const text = await navigator.clipboard.readText();
+                          if (text) setYoutubeUrl(text);
+                        } catch (err) {
+                          console.error('Failed to read clipboard contents: ', err);
+                        }
+                      }}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
+                      title="Dán link"
+                    >
+                      <Clipboard className="w-4 h-4" />
+                    </button>
+                  </>
+                ) : (
+                  <input
+                    type="file"
+                    id="inline-file-upload"
+                    accept="video/*,audio/*,.srt,.vtt"
+                    required
+                    className="w-full h-11 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg px-4 text-sm text-slate-500 dark:text-neutral-400 file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-indigo-900/30 dark:file:text-indigo-400 file:mt-1.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm transition-all"
+                  />
+                )}
               </div>
 
               <div className="flex gap-2 w-full sm:w-auto">
@@ -281,29 +307,25 @@ export default function InlineUploadBanner({
                 </select>
 
                 {module === 'vocabulary' && (
-                  <>
-                    {isPro ? (
-                      <div className="relative">
-                        <input 
-                          type="number" 
-                          placeholder="35 từ vựng" 
-                          min="5"
-                          max="100"
-                          value={targetCount}
-                          onChange={(e) => setTargetCount(e.target.value === "" ? "" : Number(e.target.value))}
-                          className="h-11 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg px-3 text-sm font-medium text-slate-700 dark:text-neutral-300 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm w-full sm:w-32 dark:text-neutral-200"
-                          disabled={uploading}
-                        />
-                      </div>
-                    ) : (
-                      <div className="h-11 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 rounded-lg px-3 text-sm font-medium text-slate-400 dark:text-neutral-500 flex items-center justify-center sm:justify-start shadow-sm flex-1 sm:w-32 sm:flex-none cursor-not-allowed relative group dark:text-neutral-400 dark:bg-[#0a0a0a]">
-                        <span>35 từ vựng</span>
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-800 text-white text-xs p-2 rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all text-center z-10 pointer-events-none">
-                          Nâng cấp PRO để tuỳ chỉnh số lượng từ vựng
-                        </div>
-                      </div>
-                    )}
-                  </>
+                  <div className="relative group flex-1 sm:w-32 sm:flex-none">
+                    <input 
+                      type="number" 
+                      placeholder={`${maxVocab && maxVocab > 0 && maxVocab < 35 ? maxVocab : 35} từ`} 
+                      min="5"
+                      max={maxVocab && maxVocab > 0 ? maxVocab : 1000}
+                      value={targetCount}
+                      onChange={(e) => {
+                         let val: number | "" = e.target.value === "" ? "" : Number(e.target.value);
+                         if (val !== "" && maxVocab && maxVocab > 0 && val > maxVocab) {
+                            val = maxVocab;
+                            toast.error(`Gói của bạn chỉ hỗ trợ tối đa ${maxVocab} từ vựng/video`, { id: 'vocab-limit' });
+                         }
+                         setTargetCount(val);
+                      }}
+                      className="h-11 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg px-3 text-sm font-medium text-slate-700 dark:text-neutral-300 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm w-full dark:text-neutral-200"
+                      disabled={uploading}
+                    />
+                  </div>
                 )}
               </div>
 

@@ -1,41 +1,35 @@
 "use client";
 
-import React, { useState } from 'react';
-import AdminSidebar from './AdminSidebar';
-import AdminHeader from './AdminHeader';
-import { GlobalSearch } from './GlobalSearch';
+import { useState } from "react";
+import AdminSidebar from "./AdminSidebar";
+import AdminHeader from "./AdminHeader";
+import CommandPalette from "./CommandPalette";
 
-export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+export default function AdminLayoutClient({ 
+  children, 
+  user 
+}: { 
+  children: React.ReactNode; 
+  user: any;
+}) {
+  const [cmdOpen, setCmdOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-[#000000] dark:bg-[#000000] font-[Arial,sans-serif] overflow-hidden text-neutral-300">
-      <GlobalSearch />
-      {/* Mobile Sidebar overlay */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+    <>
+      <CommandPalette open={cmdOpen} setOpen={setCmdOpen} />
       
-      {/* Sidebar - Mobile Drawer & Desktop Fixed */}
-      <div className={`
-        fixed inset-y-0 left-0 z-50 transform md:relative md:translate-x-0 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
-        ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
-      `}>
-        <AdminSidebar onClose={() => setSidebarOpen(false)} />
-      </div>
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden bg-[#0a0a0a] rounded-tl-2xl border-t border-l border-neutral-800/60 shadow-2xl md:mt-2">
-        <AdminHeader onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 relative z-0 scrollbar-thin scrollbar-thumb-neutral-800">
-          <div className="max-w-[1600px] mx-auto space-y-6">
+      <div className="flex h-screen bg-[#0a0a0a] text-neutral-200 font-sans overflow-hidden selection:bg-indigo-500/30">
+        <div className="w-[260px] flex-shrink-0 border-r border-neutral-800/60 bg-neutral-950 z-10">
+          <AdminSidebar user={user} onOpenCommandPalette={() => setCmdOpen(true)} />
+        </div>
+        
+        <div className="flex flex-col flex-1 relative min-w-0 bg-[#0a0a0a] z-0 h-screen">
+          <AdminHeader user={user} />
+          <main className="flex-1 overflow-y-auto scrollbar-hide relative z-0 p-6">
             {children}
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

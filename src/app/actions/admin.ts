@@ -139,7 +139,11 @@ export async function createAdminMediaJob(params: {
     .select()
     .single();
 
-  if (jobError) throw jobError;
+  if (jobError) {
+    console.error("Admin Job creation failed, rolling back.", jobError);
+    await supabase.from("media_assets").delete().eq("id", asset.id);
+    throw jobError;
+  }
   
   // NOTE: This usually triggers an edge function in the backend to start downloading and transcribing.
   // We assume the webhook or polling mechanism handles pending jobs.

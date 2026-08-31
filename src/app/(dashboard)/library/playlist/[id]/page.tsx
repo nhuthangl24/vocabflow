@@ -67,7 +67,6 @@ export default async function PlaylistPage(props: { params: Promise<{ id: string
         initialAssets={publicAssets || []} 
         publicAssets={[]}
         playlists={[]}
-        hideTabs={true}
       />
     </div>
   );

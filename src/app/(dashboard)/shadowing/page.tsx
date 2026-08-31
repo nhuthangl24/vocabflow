@@ -44,26 +44,29 @@ export default async function ShadowingLibraryPage() {
   const userPlanName = (user?.user_metadata?.plan || 'free').toUpperCase();
   const isPro = userPlanName === 'PRO';
 
-  let dailyLimit = 0;
-  if (isAdmin || userPlanName === 'PRO') {
-    dailyLimit = 999999;
-  } else if (userPlanName === 'BASIC') {
-    dailyLimit = 5;
+  // Fetch plan dynamically for limits
+  const { data: planData } = await supabase.from('plans').select('monthly_shadowing_limit').ilike('name', userPlanName).single();
+
+  let monthlyLimit = isAdmin ? 999999 : 0;
+  if (planData && !isAdmin) {
+    monthlyLimit = planData.monthly_shadowing_limit === 0 ? 999999 : planData.monthly_shadowing_limit;
   }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Count usage for the current month
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
 
   const { count: tc } = await supabase
     .from("media_assets")
     .select("*", { count: "exact", head: true })
-    .gte("created_at", today.toISOString())
+    .gte("created_at", startOfMonth.toISOString())
     .eq("user_id", user.id)
     .neq("status", "failed")
     .neq("status", "deleted")
     .eq("module", "shadowing");
 
-  const todayCount = tc || 0;
+  const monthlyCount = tc || 0;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -89,8 +92,8 @@ export default async function ShadowingLibraryPage() {
         <InlineUploadBanner 
           userId={user.id} 
           isPro={isPro}
-          dailyLimit={dailyLimit}
-          todayCount={todayCount}
+          dailyLimit={monthlyLimit}
+          todayCount={monthlyCount}
           module="shadowing"
         />
       )}

@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect, useMemo } from "react";
 import YouTube, { YouTubeProps } from "react-youtube";
-import { Play, Pause, SkipBack, SkipForward, RotateCcw, Check, Eye, EyeOff, Lightbulb, CheckCircle, XCircle } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, RotateCcw, Check, Eye, EyeOff, Lightbulb, CheckCircle, XCircle, Star } from "lucide-react";
 import { saveShadowingProgress } from "@/app/actions/shadowing";
 import { useAnalytics } from "@/hooks/useAnalytics";
 
@@ -59,6 +59,40 @@ export default function ShadowingWorkspaceClient({ assetId, videoUrl, transcript
   // UI states
   const [activeTab, setActiveTab] = useState<"dictation" | "shadowing">("dictation");
   const [hideVideo, setHideVideo] = useState(false);
+  
+  // Flashcard states
+  const [showDeckModal, setShowDeckModal] = useState(false);
+  const [decks, setDecks] = useState<any[]>([]);
+  const [selectedSegmentToAdd, setSelectedSegmentToAdd] = useState<any>(null);
+  
+  useEffect(() => {
+    fetch("/api/user/flashcards/decks").then(r => r.json()).then(d => {
+      if (d.success) setDecks(d.decks || []);
+    });
+  }, []);
+
+  const handleAddToFlashcard = async (deckId: string) => {
+    if (!selectedSegmentToAdd) return;
+    try {
+      const res = await fetch("/api/user/flashcards/bulk-add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          deckId, 
+          cards: [{ term: selectedSegmentToAdd.text, meaning: selectedSegmentToAdd.translation_vi || selectedSegmentToAdd.translation || "Chưa có nghĩa" }]
+        })
+      });
+      if (res.ok) {
+        import("react-hot-toast").then(t => t.default.success("Đã thêm vào bộ thẻ!"));
+      } else {
+        import("react-hot-toast").then(t => t.default.error("Có lỗi xảy ra"));
+      }
+    } catch (e) {
+      import("react-hot-toast").then(t => t.default.error("Lỗi mạng"));
+    } finally {
+      setShowDeckModal(false);
+    }
+  };
   
   // extract video ID for YouTube
   const videoId = useMemo(() => {
@@ -585,6 +619,18 @@ export default function ShadowingWorkspaceClient({ assetId, videoUrl, transcript
                               </p>
                             )}
                           </div>
+                          
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedSegmentToAdd(segment);
+                              setShowDeckModal(true);
+                            }}
+                            className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors shrink-0"
+                            title="Thêm vào Flashcards"
+                          >
+                            <Star className="w-5 h-5" />
+                          </button>
                         </div>
                       </div>
                     );
@@ -601,6 +647,37 @@ export default function ShadowingWorkspaceClient({ assetId, videoUrl, transcript
 
         </div>
       </div>
+
+      {/* Add to Deck Modal */}
+      {showDeckModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowDeckModal(false)}>
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-sm border border-slate-200 dark:border-neutral-800 animate-in fade-in duration-200" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b border-slate-100 dark:border-neutral-800 flex justify-between items-center">
+              <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Star className="w-4 h-4 text-amber-500" /> Lưu vào Flashcard
+              </h3>
+              <button onClick={() => setShowDeckModal(false)} className="text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors">
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 max-h-60 overflow-y-auto space-y-2">
+              {decks.length === 0 ? (
+                <p className="text-sm text-center text-slate-500 dark:text-neutral-400 italic py-4">Bạn chưa tạo bộ thẻ nào.</p>
+              ) : (
+                decks.map(d => (
+                  <button 
+                    key={d.id} 
+                    onClick={() => handleAddToFlashcard(d.id)}
+                    className="w-full text-left px-4 py-3 rounded-xl border border-slate-200 dark:border-neutral-800 hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors font-semibold text-sm text-slate-800 dark:text-neutral-200"
+                  >
+                    {d.name}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

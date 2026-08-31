@@ -12,6 +12,14 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { jobId, userId, chunks, settings } = body;
 
+    // INTERNAL AUTHENTICATION CHECK
+    const internalSecret = req.headers.get("x-internal-secret");
+    const validSecret = process.env.INTERNAL_API_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || "vocabflow-internal";
+    
+    if (internalSecret !== validSecret) {
+      return NextResponse.json({ error: "Forbidden - Internal Only" }, { status: 403 });
+    }
+
     if (!jobId || !chunks || !Array.isArray(chunks) || chunks.length === 0) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }

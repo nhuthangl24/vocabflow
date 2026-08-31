@@ -5,16 +5,18 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { LogOut, Settings, User as UserIcon, Crown } from "lucide-react";
 import Link from "next/link";
+import { PlanFeatures } from "@/lib/plans";
 
 type UserMenuClientProps = {
   user: any;
   isCollapsed?: boolean;
+  planFeatures?: PlanFeatures;
 };
 
-export default function UserMenuClient({ user, isCollapsed }: UserMenuClientProps) {
+export default function UserMenuClient({ user, isCollapsed, planFeatures }: UserMenuClientProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [localUser, setLocalUser] = useState(user);
-  const isPro = user?.user_metadata?.plan === 'pro';
+  const isPro = planFeatures?.name === 'PRO' || planFeatures?.name === 'LIFETIME' || planFeatures?.name === 'ADMIN';
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const supabase = createClient();

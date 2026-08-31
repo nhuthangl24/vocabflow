@@ -187,10 +187,10 @@ export async function cleanSubtitles(segments: any[], userId?: string) {
   for (const group of Array.from(groupedSegments.values())) {
     group.sort((a, b) => a.start_time_ms - b.start_time_ms);
     
-    let rawText = group.map(g => g.text).join(' ');
+    const rawText = group.map(g => g.text).join(' ');
     
     // Clean up common subtitle artifacts (True Action Engine only merges, so we clean text here)
-    let cleanText = rawText
+    const cleanText = rawText
       .replace(/>>\s*/g, '') // Bỏ dấu nhắc người nói '>>'
       .replace(/♪/g, '')     // Bỏ nốt nhạc
       .replace(/\s{2,}/g, ' ') // Xóa khoảng trắng thừa do nối chuỗi

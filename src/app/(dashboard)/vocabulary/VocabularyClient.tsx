@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Search, Volume2, Bookmark, X, ExternalLink } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Volume2, Bookmark, X, ExternalLink, BrainCircuit, ChevronDown } from "lucide-react";
+import toast from "react-hot-toast";
 
 type VocabularyItem = {
   id: string;
@@ -24,6 +25,36 @@ type VocabularyItem = {
 export default function VocabularyClient({ items }: { items: VocabularyItem[] }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedItem, setSelectedItem] = useState<VocabularyItem | null>(null);
+  const [decks, setDecks] = useState<any[]>([]);
+  const [deckPickerItem, setDeckPickerItem] = useState<VocabularyItem | null>(null);
+
+  useEffect(() => {
+    fetch("/api/user/flashcards/decks")
+      .then(r => r.json())
+      .then(d => { if (d.success) setDecks(d.decks || []); });
+  }, []);
+
+  const addToFlashcards = async (item: VocabularyItem, deckId?: string) => {
+    const toastId = toast.loading("Đang thêm...");
+    try {
+      const res = await fetch("/api/user/flashcards/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vocabId: item.id, deckId })
+      });
+      if (res.ok) {
+        toast.success("Đã thêm vào Flashcards!", { id: toastId });
+      } else {
+        const data = await res.json();
+        if (res.status === 409) toast.success("Đã có trong Flashcards", { id: toastId });
+        else toast.error(data.error || "Có lỗi xảy ra", { id: toastId });
+      }
+    } catch {
+      toast.error("Lỗi mạng", { id: toastId });
+    } finally {
+      setDeckPickerItem(null);
+    }
+  };
 
   // Deduplicate items based on term (case insensitive)
   const deduplicatedItems = items.reduce((acc: VocabularyItem[], current) => {
@@ -99,6 +130,48 @@ export default function VocabularyClient({ items }: { items: VocabularyItem[] })
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-[#0a0a0a] rounded-xl border border-slate-200/60 dark:border-neutral-800 shadow-sm overflow-hidden">
+      
+      {/* Deck Picker Modal */}
+      {deckPickerItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setDeckPickerItem(null)}>
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-sm border border-slate-200 dark:border-neutral-700 animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b border-slate-100 dark:border-neutral-800 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-slate-900 dark:text-white">Thêm vào Flashcards</h3>
+                <p className="text-xs text-slate-500 dark:text-neutral-400 mt-0.5">Chọn bộ thẻ cho "{deckPickerItem.term}"</p>
+              </div>
+              <button onClick={() => setDeckPickerItem(null)} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-neutral-800 rounded-full transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-3 space-y-1.5">
+              <button
+                onClick={() => addToFlashcards(deckPickerItem)}
+                className="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-50 dark:hover:bg-neutral-800 transition-colors flex items-center justify-between group"
+              >
+                <div>
+                  <div className="font-semibold text-sm text-slate-900 dark:text-white">All Flashcards</div>
+                  <div className="text-xs text-slate-400 dark:text-neutral-500">Bộ thẻ mặc định</div>
+                </div>
+                <BrainCircuit className="w-4 h-4 text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </button>
+              {decks.map(d => (
+                <button
+                  key={d.id}
+                  onClick={() => addToFlashcards(deckPickerItem, d.id)}
+                  className="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-50 dark:hover:bg-neutral-800 transition-colors flex items-center justify-between group"
+                >
+                  <div>
+                    <div className="font-semibold text-sm text-slate-900 dark:text-white">{d.name}</div>
+                    {d.description && <div className="text-xs text-slate-400 dark:text-neutral-500">{d.description}</div>}
+                  </div>
+                  <BrainCircuit className="w-4 h-4 text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       {/* Toolbar */}
       <div className="h-14 border-b border-slate-100 dark:border-neutral-800 flex items-center px-4 shrink-0 bg-slate-50/50 dark:bg-neutral-900 dark:bg-[#0a0a0a]/50">
         <div className="relative flex-1 max-w-md">
@@ -131,10 +204,22 @@ export default function VocabularyClient({ items }: { items: VocabularyItem[] })
                 onClick={() => setSelectedItem(item)}
                 className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-xl p-4 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all relative group flex flex-col cursor-pointer"
               >
-                <button className="absolute top-3 right-3 text-slate-300 dark:text-slate-600 hover:text-amber-400 dark:hover:text-amber-400 transition-colors">
-                  <Bookmark className="w-5 h-5" />
-                </button>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-1 pr-6">{item.term}</h3>
+                <div className="absolute top-3 right-3 flex items-center gap-1">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeckPickerItem(item);
+                    }}
+                    className="text-slate-300 dark:text-slate-600 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors p-1"
+                    title="Thêm vào Không gian ôn tập (FSRS)"
+                  >
+                    <BrainCircuit className="w-5 h-5" />
+                  </button>
+                  <button className="text-slate-300 dark:text-slate-600 hover:text-amber-400 dark:hover:text-amber-400 transition-colors p-1">
+                    <Bookmark className="w-5 h-5" />
+                  </button>
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-1 pr-16">{item.term}</h3>
                 
                 <div className="flex items-center gap-2 mb-3 text-xs font-medium text-slate-500 dark:text-neutral-400">
                   {item.part_of_speech && (

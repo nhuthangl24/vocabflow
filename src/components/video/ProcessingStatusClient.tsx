@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Loader2, CheckCircle2 } from "lucide-react";
+import { Loader2, CheckCircle2, RefreshCw } from "lucide-react";
 
 export default function ProcessingStatusClient({ jobId, assetId }: { jobId?: string; assetId: string }) {
   const router = useRouter();
   const supabase = createClient();
   const [status, setStatus] = useState<string>("queued");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   useEffect(() => {
     if (!jobId) {
@@ -103,18 +104,56 @@ export default function ProcessingStatusClient({ jobId, assetId }: { jobId?: str
         </div>
       </div>
 
-      <div className="flex items-center justify-center gap-3 text-gray-700 font-medium dark:text-neutral-200">
-        {status === "failed" ? (
-          <div className="text-red-500 flex flex-col items-center">
-            <span className="mb-2">❌ Xử lý thất bại</span>
-            <span className="text-sm font-normal text-red-400">{errorMsg}</span>
-          </div>
-        ) : status === "completed" ? (
-          <CheckCircle2 className="w-6 h-6 text-green-500" />
-        ) : (
-          <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+      <div className="flex flex-col items-center justify-center gap-4 text-gray-700 font-medium dark:text-neutral-200">
+        <div className="flex items-center gap-3">
+          {status === "failed" ? (
+            <div className="text-red-500 flex flex-col items-center">
+              <span className="mb-2 text-lg font-bold">❌ Xử lý thất bại</span>
+              <span className="text-sm font-normal text-red-400 max-w-md">{errorMsg || "Đã có lỗi xảy ra trong quá trình trích xuất."}</span>
+            </div>
+          ) : status === "completed" ? (
+            <CheckCircle2 className="w-6 h-6 text-green-500" />
+          ) : (
+            <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+          )}
+          {status !== "failed" && <span>{text}</span>}
+        </div>
+
+        {status === "failed" && jobId && (
+          <button 
+            onClick={async () => {
+              setIsRetrying(true);
+              try {
+                await fetch("/api/webhooks/transcription", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ jobId }),
+                  keepalive: true
+                });
+                // Wait for DB to update to queued
+                setTimeout(() => {
+                  setStatus("queued");
+                  setIsRetrying(false);
+                }, 1500);
+              } catch (e) {
+                console.error(e);
+                setIsRetrying(false);
+              }
+            }}
+            disabled={isRetrying}
+            className="mt-4 flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg font-medium transition-colors"
+          >
+            {isRetrying ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" /> Đang khởi động lại...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-4 h-4" /> Thử lại ngay
+              </>
+            )}
+          </button>
         )}
-        {status !== "failed" && <span>{text}</span>}
       </div>
     </div>
   );

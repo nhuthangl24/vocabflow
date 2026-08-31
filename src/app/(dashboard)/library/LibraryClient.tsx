@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, Filter, PlayCircle, MoreVertical, ChevronLeft, ChevronRight, Layers, Video } from "lucide-react";
+import { Search, Filter, PlayCircle, MoreVertical, ChevronLeft, ChevronRight, Layers, Video, Trash2 } from "lucide-react";
+import toast from "react-hot-toast";
 
 type Asset = any;
 type Playlist = any;
@@ -12,71 +13,95 @@ export default function LibraryClient({
   initialAssets, 
   publicAssets = [], 
   playlists = [],
-  hideTabs = false
+  canViewSystemLibrary = false,
+  serverTotalItems,
+  serverPage,
+  serverSearchQuery
 }: { 
   initialAssets: Asset[],
   publicAssets?: Asset[],
   playlists?: Playlist[],
-  hideTabs?: boolean
+  canViewSystemLibrary?: boolean,
+  serverTotalItems?: number,
+  serverPage?: number,
+  serverSearchQuery?: string
 }) {
   const [activeTab, setActiveTab] = useState<"public" | "private">("private");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [deleteModal, setDeleteModal] = useState<{ id: string, title: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  
+  // Use server state if available for private tab
+  const isServerPaginated = activeTab === 'private' && serverTotalItems !== undefined;
+  
+  const [searchQuery, setSearchQuery] = useState(isServerPaginated ? (serverSearchQuery || "") : "");
+  const [currentPage, setCurrentPage] = useState(isServerPaginated ? (serverPage || 1) : 1);
   const itemsPerPage = 8;
   const router = useRouter();
 
-  // Filter assets based on active tab or if tabs are hidden (treat as private for standard filtering)
-  const baseAssets = (activeTab === "private" || hideTabs) ? initialAssets : publicAssets.filter((a: any) => !a.playlist_id);
+  // Filter assets based on active tab
+  const baseAssets = activeTab === "private" ? initialAssets : publicAssets.filter((a: any) => !a.playlist_id);
   
-  const filteredAssets = baseAssets.filter((asset: any) => {
+  const filteredAssets = isServerPaginated ? baseAssets : baseAssets.filter((asset: any) => {
     return asset.title?.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
   const filteredPlaylists = activeTab === "public" ? playlists.filter((p: any) => p.title.toLowerCase().includes(searchQuery.toLowerCase())) : [];
   
-  const totalItems = filteredPlaylists.length + filteredAssets.length;
+  const totalItems = isServerPaginated ? serverTotalItems : (filteredPlaylists.length + filteredAssets.length);
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   
   // Combine for pagination
-  const allFilteredItems = [...filteredPlaylists.map(p => ({...p, isPlaylist: true})), ...filteredAssets];
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentItems = allFilteredItems.slice(startIndex, startIndex + itemsPerPage);
-
-
+  const allFilteredItems = isServerPaginated ? filteredAssets : [...filteredPlaylists.map(p => ({...p, isPlaylist: true})), ...filteredAssets];
+  const startIndex = isServerPaginated ? (currentPage - 1) * itemsPerPage : (currentPage - 1) * itemsPerPage;
+  const currentItems = isServerPaginated ? allFilteredItems : allFilteredItems.slice(startIndex, startIndex + itemsPerPage);
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= totalPages) {
       setCurrentPage(newPage);
+      if (isServerPaginated) {
+        router.push(`?page=${newPage}&q=${encodeURIComponent(searchQuery)}`);
+      }
     }
   };
 
   // Reset page to 1 when searching
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
+    const val = e.target.value;
+    setSearchQuery(val);
     setCurrentPage(1);
+    
+    // Auto submit search if server paginated (debounce would be better, but simple is ok for now)
+    if (isServerPaginated) {
+        // Debounce simple
+        const timeout = setTimeout(() => {
+           router.push(`?page=1&q=${encodeURIComponent(val)}`);
+        }, 500);
+        return () => clearTimeout(timeout);
+    }
   };
 
   return (
     <div className="bg-slate-100/50 dark:bg-[#0a0a0a]/50 rounded-xl border border-slate-200/60 dark:border-neutral-800 shadow-sm flex flex-col flex-1 min-h-0 overflow-hidden">
       {/* Tabs Row */}
-      {!hideTabs && (
-        <div className="flex px-4 pt-4 shrink-0 bg-slate-50/50 dark:bg-[#0a0a0a]/50">
-          <div className="flex gap-2">
+      <div className="flex px-4 pt-4 shrink-0 bg-slate-50/50 dark:bg-[#0a0a0a]/50">
+        <div className="flex gap-2">
+          <button
+            onClick={() => { setActiveTab("private"); setCurrentPage(1); }}
+            className={`px-4 py-2 text-sm font-bold rounded-lg transition-colors ${activeTab === "private" ? "bg-indigo-600 text-white shadow-sm" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 dark:bg-neutral-900 dark:border-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-800"}`}
+          >
+            Video Của Bạn
+          </button>
+          {canViewSystemLibrary && (
             <button
               onClick={() => { setActiveTab("public"); setCurrentPage(1); }}
               className={`px-4 py-2 text-sm font-bold rounded-lg transition-colors ${activeTab === "public" ? "bg-indigo-600 text-white shadow-sm" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 dark:bg-neutral-900 dark:border-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-800"}`}
             >
-              Kho Video
+              Kho Video Hệ Thống
             </button>
-            <button
-              onClick={() => { setActiveTab("private"); setCurrentPage(1); }}
-              className={`px-4 py-2 text-sm font-bold rounded-lg transition-colors ${activeTab === "private" ? "bg-indigo-600 text-white shadow-sm" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 dark:bg-neutral-900 dark:border-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-800"}`}
-            >
-              Video Của Bạn
-            </button>
-          </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Toolbar */}
       <div className="h-12 border-b border-slate-100 dark:border-neutral-800 flex items-center justify-between px-4 shrink-0 bg-slate-50/50 dark:bg-[#0a0a0a]/50">
@@ -223,17 +248,30 @@ export default function LibraryClient({
                           {new Date(asset.created_at).toLocaleDateString('vi-VN', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </span>
                         
-                        <div className="flex items-center gap-1">
-                          {asset.status !== 'ready' && (
-                            <button className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors dark:text-neutral-500">
+                        <div className="flex items-center gap-1 relative">
+                          <div className="relative">
+                            <button 
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMenuOpen(menuOpen === asset.id ? null : asset.id); }}
+                              className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors dark:text-neutral-500"
+                            >
                               <MoreVertical className="w-3 h-3" />
                             </button>
-                          )}
-                          {asset.status === 'ready' && (
-                            <button className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors dark:text-neutral-500">
-                              <MoreVertical className="w-3 h-3" />
-                            </button>
-                          )}
+                            {menuOpen === asset.id && (
+                              <div className="absolute right-0 bottom-full mb-1 w-40 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-xl shadow-xl z-50 overflow-hidden" onMouseLeave={() => setMenuOpen(null)}>
+                                {asset.status === 'ready' && (
+                                  <Link href={`/video/${asset.id}`} className="block px-4 py-2 text-sm text-slate-700 dark:text-neutral-300 hover:bg-slate-50 dark:hover:bg-neutral-800 font-medium" onClick={() => setMenuOpen(null)}>
+                                    Xem video
+                                  </Link>
+                                )}
+                                <button 
+                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMenuOpen(null); setDeleteModal({ id: asset.id, title: asset.title }); }}
+                                  className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 font-medium"
+                                >
+                                  Xóa video
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -301,6 +339,53 @@ export default function LibraryClient({
           </>
         )}
       </div>
+
+      {/* Delete Video Modal */}
+      {deleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-[#0a0a0a] rounded-2xl max-w-sm w-full shadow-2xl border border-slate-200 dark:border-neutral-800 overflow-hidden">
+            <div className="p-6">
+              <h3 className="font-bold text-slate-900 dark:text-white text-lg mb-2">Xác nhận xóa</h3>
+              <p className="text-slate-600 dark:text-neutral-400 text-sm">
+                Bạn có chắc chắn muốn xóa video <strong className="text-slate-900 dark:text-white">&quot;{deleteModal.title}&quot;</strong>? Hành động này không thể hoàn tác.
+              </p>
+            </div>
+            <div className="p-4 bg-slate-50 dark:bg-neutral-900/50 border-t border-slate-100 dark:border-neutral-800 flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteModal(null)}
+                className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-800 rounded-lg transition-colors"
+              >
+                Huỷ
+              </button>
+              <button
+                onClick={async () => {
+                  setIsDeleting(true);
+                  try {
+                    const res = await fetch(`/api/media/${deleteModal.id}`, { method: 'DELETE' });
+                    if (res.ok) {
+                      toast.success("Đã xóa video");
+                      setDeleteModal(null);
+                      router.refresh();
+                    } else {
+                      const data = await res.json();
+                      toast.error(data.error || "Không thể xóa video");
+                    }
+                  } catch (e) {
+                    toast.error("Lỗi mạng");
+                  } finally {
+                    setIsDeleting(false);
+                  }
+                }}
+                disabled={isDeleting}
+                className="px-4 py-2 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-lg shadow-sm transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {isDeleting && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                Xóa video
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

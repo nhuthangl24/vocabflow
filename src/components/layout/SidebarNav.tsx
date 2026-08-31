@@ -3,22 +3,26 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "../ThemeToggle";
-import { LayoutDashboard, Library, BookOpen, LineChart, Settings, Headphones, ShieldAlert } from "lucide-react";
+import { LayoutDashboard, Library, BookOpen, LineChart, Settings, Headphones, Activity, Zap, History, Layers, CreditCard, Lock } from "lucide-react";
+import { PlanFeatures } from "@/lib/plans";
 
 type SidebarNavProps = {
   isCollapsed?: boolean;
   user?: any;
+  planFeatures?: PlanFeatures;
 };
 
-export default function SidebarNav({ isCollapsed, user }: SidebarNavProps) {
+export default function SidebarNav({ isCollapsed, user, planFeatures }: SidebarNavProps) {
   const pathname = usePathname();
   
   const navItems = [
     { name: "Trang chủ", href: "/dashboard", icon: LayoutDashboard },
     { name: "Thống kê", href: user ? "/analytics" : "/login", icon: LineChart },
-    { name: "Kho Video", href: user ? "/library" : "/login", icon: Library },
-    { name: "Kho Từ vựng", href: user ? "/vocabulary" : "/login", icon: BookOpen },
-    { name: "Shadowing", href: user ? "/shadowing" : "/login", icon: Headphones },
+    { name: "Kho Video", href: user ? "/library" : "/login", icon: Library, locked: planFeatures && !planFeatures.enable_library },
+    { name: "Kho Từ vựng", href: user ? "/vocabulary" : "/login", icon: BookOpen, locked: planFeatures && !planFeatures.enable_vocabulary },
+    { name: "Flashcards", href: user ? "/flashcards" : "/login", icon: Layers, locked: planFeatures && !planFeatures.enable_flashcards },
+    { name: "Shadowing", href: user ? "/shadowing" : "/login", icon: Headphones, locked: planFeatures && !planFeatures.enable_shadowing },
+    { name: "Gói cước", href: user ? "/pricing" : "/login", icon: CreditCard },
     { name: "Cài đặt", href: user ? "/settings" : "/login", icon: Settings },
   ];
 
@@ -30,9 +34,17 @@ export default function SidebarNav({ isCollapsed, user }: SidebarNavProps) {
       
       {navItems.map((item) => {
         // Active state based on original path if user was logged in
-        const originalPath = item.href === '/login' 
-          ? (item.name === "Kho Video" ? "/library" : item.name === "Kho Từ vựng" ? "/vocabulary" : item.name === "Thống kê" ? "/analytics" : item.name === "Shadowing" ? "/shadowing" : "/settings")
-          : item.href;
+        let originalPath = item.href;
+        if (item.href === '/login') {
+            const match = ['Kho Video', 'Kho Từ vựng', 'Thống kê', 'Shadowing', 'Cài đặt', 'Processing', 'AI Usage', 'Activity', 'Flashcards', 'Gói cước'].find(n => n === item.name);
+            if (match) {
+                const map: Record<string, string> = {
+                    'Kho Video': '/library', 'Kho Từ vựng': '/vocabulary', 'Thống kê': '/analytics', 'Shadowing': '/shadowing', 'Cài đặt': '/settings',
+                    'Processing': '/processing', 'AI Usage': '/ai-usage', 'Activity': '/activity', 'Flashcards': '/flashcards', 'Gói cước': '/pricing'
+                };
+                originalPath = map[match];
+            }
+        }
           
         const isActive = pathname === originalPath || pathname.startsWith(originalPath + '/');
         const Icon = item.icon;
@@ -40,12 +52,17 @@ export default function SidebarNav({ isCollapsed, user }: SidebarNavProps) {
         return (
           <Link 
             key={item.name} 
-            href={item.href} 
+            href={item.locked ? "/pricing" : item.href} 
             title={isCollapsed ? item.name : undefined}
-            className={`flex items-center ${isCollapsed ? 'justify-center p-2.5 mx-auto w-12 h-12' : 'gap-3 px-3 py-2'} rounded-xl font-semibold text-[13px] transition-colors ${ isActive ? 'bg-indigo-50 text-indigo-700 shadow-sm dark:bg-neutral-800 dark:text-white' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800' }`}
+            className={`flex items-center justify-between ${isCollapsed ? 'p-2.5 mx-auto w-12 h-12' : 'px-3 py-2'} rounded-xl font-semibold text-[13px] transition-colors ${ isActive ? 'bg-indigo-50 text-indigo-700 shadow-sm dark:bg-neutral-800 dark:text-white' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800' }`}
           >
-            <Icon className={isCollapsed ? "w-5 h-5" : "w-4 h-4"} />
-            {!isCollapsed && <span>{item.name}</span>}
+            <div className="flex items-center gap-3">
+              <Icon className={isCollapsed ? "w-5 h-5" : "w-4 h-4"} />
+              {!isCollapsed && <span>{item.name}</span>}
+            </div>
+            {!isCollapsed && item.locked && (
+              <Lock className="w-3.5 h-3.5 text-neutral-400" />
+            )}
           </Link>
         );
       })}

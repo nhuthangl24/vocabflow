@@ -1,6 +1,6 @@
-import { AdminLayoutClient } from "@/components/admin/AdminLayoutClient";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import AdminLayoutClient from "@/components/admin/AdminLayoutClient";
 
 export default async function AdminLayout({
   children,
@@ -14,15 +14,11 @@ export default async function AdminLayout({
     redirect("/login");
   }
 
-  // Double check admin emails on layout level just in case middleware is bypassed
-  const adminEmails = process.env.ADMIN_EMAILS ? process.env.ADMIN_EMAILS.split(',').map(e => e.trim().toLowerCase()) : [];
-  if (!user.email || !adminEmails.includes(user.email.toLowerCase())) {
+  // Very basic authorization (replace with proper RBAC)
+  const adminEmails = process.env.ADMIN_EMAILS?.split(',') || [];
+  if (!user.email || !adminEmails.includes(user.email)) {
     redirect("/dashboard");
   }
 
-  return (
-    <AdminLayoutClient>
-      {children}
-    </AdminLayoutClient>
-  );
+  return <AdminLayoutClient user={user}>{children}</AdminLayoutClient>;
 }

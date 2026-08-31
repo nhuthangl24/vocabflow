@@ -257,67 +257,43 @@ async function processJob(jobId: string) {
           const requestedCount = job.settings?.targetCount ? Number(job.settings.targetCount) : 35;
           const MAX_WORDS = Math.min(requestedCount, MAX_ALLOWED);
           
-          const { RateLimiter, withRetry, withTimeout } = await import("@/lib/ai/utils");
-          const { AIConfig } = await import("@/lib/ai/config");
-          const { getCachedExtraction, setCachedExtraction, generateCacheKey } = await import("@/lib/ai/cache");
-          
-          // 1. Token-aware Chunking based on Segments & Safe Word Count
-          const SAFE_WORDS_PER_CHUNK = AIConfig.chunking.safeWordsPerChunk || 15;
+          // Calculate how many chunks we need to safely extract MAX_WORDS.
+          // Assume a safe limit of 15 words per chunk to avoid output truncation.
+          const SAFE_WORDS_PER_CHUNK = 15;
           const minChunksForWords = Math.ceil(MAX_WORDS / SAFE_WORDS_PER_CHUNK);
-          const minChunksForLength = Math.ceil(fullTranscript.length / AIConfig.chunking.maxCharsPerChunk);
-          const totalChunksNeeded = Math.max(minChunksForWords, minChunksForLength, 1);
-          const targetCharsPerChunk = Math.ceil(fullTranscript.length / totalChunksNeeded);
-
-          const transcriptChunks: string[] = [];
-          let currentChunkText = "";
           
-          for (const segment of allSegments) {
-            // Cut if it exceeds target length AND we haven't reached the max allowed chunks
-            // (To avoid creating tiny chunks at the end)
-            if (currentChunkText.length + segment.text.length > targetCharsPerChunk && currentChunkText.length > 0 && transcriptChunks.length < totalChunksNeeded - 1) {
-              transcriptChunks.push(currentChunkText.trim());
-              currentChunkText = "";
+          const MAX_CHARS_PER_CHUNK = 12000;
+          const minChunksForLength = Math.ceil(fullTranscript.length / MAX_CHARS_PER_CHUNK);
+          
+          const totalChunksNeeded = Math.max(minChunksForWords, minChunksForLength);
+          const actualChunkSize = Math.ceil(fullTranscript.length / totalChunksNeeded);
+      
+          const transcriptChunks = [];
+          if (totalChunksNeeded <= 1) {
+            transcriptChunks.push(fullTranscript);
+          } else {
+            for (let i = 0; i < fullTranscript.length; i += actualChunkSize) {
+              transcriptChunks.push(fullTranscript.substring(i, i + actualChunkSize));
             }
-            currentChunkText += segment.text + " ";
-          }
-          if (currentChunkText.trim().length > 0) {
-            transcriptChunks.push(currentChunkText.trim());
           }
       
           const wordsPerChunk = Math.ceil(MAX_WORDS / transcriptChunks.length);
-          
-          const vocabProviderStr = (process.env.VOCAB_PROVIDER || 'hhtech').toLowerCase();
-          const chunkSettings = { ...job.settings, targetCount: wordsPerChunk, providerName: vocabProviderStr };
-          
-          const startTime = performance.now();
-          
-          // Configure Rate Limiter (Fallback to default if provider not explicitly mapped)
-          // In real production, we can check `chunkSettings.provider`
-          const concurrencyLimit = (AIConfig.concurrency as any)[vocabProviderStr] || AIConfig.concurrency.default;
-          const vocabRateLimiter = new RateLimiter(concurrencyLimit);
-          const grammarRateLimiter = new RateLimiter(concurrencyLimit);
+          const vocabProviderName = (process.env.VOCAB_PROVIDER || 'hhtech').toLowerCase();
+          const grammarProviderName = (process.env.GRAMMAR_PROVIDER || 'hhtech').toLowerCase();
+          const chunkSettings = { ...job.settings, targetCount: wordsPerChunk, providerName: vocabProviderName };
+          const grammarSettings = { ...job.settings, targetCount: 10, providerName: grammarProviderName };
 
-          // 2. GRAMMAR PROMISE (Parallel execution with Retry & Cache)
+          const startTime = performance.now();
+          console.log(`[Job ${jobId}] 🚀 Starting PARALLEL extraction: ${transcriptChunks.length} vocab chunks + 1 grammar chunk`);
+
+          // --- Run vocab chunks + grammar IN PARALLEL ---
           const grammarPromise = (async () => {
             try {
               const { extractGrammar } = await import("@/lib/ai/grammar_extractor");
               const grammarTargetText = fullTranscript.length > 60000 ? fullTranscript.substring(0, 60000) : fullTranscript;
-              const grammarTargetCount = 10;
-              const grammarProviderStr = (process.env.GRAMMAR_PROVIDER || 'hhtech').toLowerCase();
-              const gSettings = { ...job.settings, targetCount: grammarTargetCount, providerName: grammarProviderStr };
-              
-              const cacheKey = generateCacheKey(grammarTargetText, gSettings, "grammar");
-              const cached = await getCachedExtraction(cacheKey);
-              if (cached) return cached;
-
-              const executeGrammar = () => extractGrammar(grammarTargetText, gSettings);
-              const extractionPromise = withRetry(executeGrammar, AIConfig.retry);
-              
-              // Apply rate limit and timeout
-              const grammarExtraction = await grammarRateLimiter.run(() => withTimeout(extractionPromise, AIConfig.timeout.extractionMs));
+              const grammarExtraction = await extractGrammar(grammarTargetText, grammarSettings);
               const grammarItems = grammarExtraction?.items || [];
-              
-              const results = grammarItems.map((item: any) => ({
+              return grammarItems.map((item: any) => ({
                 job_id: jobId,
                 user_id: job.user_id,
                 grammar_pattern: item.grammarPattern,
@@ -329,144 +305,90 @@ async function processJob(jobId: string) {
                 examples: item.examples,
                 confidence: item.confidence ? Number(item.confidence) : 1.0,
               }));
-              
-              if (results.length > 0) {
-                await setCachedExtraction(cacheKey, "grammar", gSettings, results, grammarProviderStr);
-              }
-              return results;
             } catch (gErr) {
-              console.error(`[Job ${jobId}] Failed to extract grammar:`, gErr);
+              console.error(`[Job ${jobId}][Grammar] ❌ Failed:`, gErr);
               return [];
             }
           })();
 
-          // 3. VOCABULARY PROMISE (Parallel execution of Chunks with Retry, Cache & Order preservation)
-          const vocabPromise = (async () => {
-            const chunkPromises = transcriptChunks.map((chunk, index) => {
-              return vocabRateLimiter.run(async () => {
-                const chunkStartTime = performance.now();
-                const cacheKey = generateCacheKey(chunk, chunkSettings, "vocabulary");
-                
-                try {
-                  const cached = await getCachedExtraction(cacheKey);
-                  if (cached) {
-                    console.log(`[Job ${jobId}][Vocab Chunk ${index + 1}/${transcriptChunks.length}] ⚡ CACHE HIT`);
-                    return { items: cached, chunkText: chunk, success: true };
-                  }
-
-                  const executeVocab = () => extractVocabulary(chunk, chunkSettings);
-                  const extractionPromise = withRetry(executeVocab, AIConfig.retry);
-                  
-                  const extraction = await withTimeout(extractionPromise, AIConfig.timeout.extractionMs);
-                  const items = extraction?.items || [];
-                  
-                  if (items.length > 0) {
-                     await setCachedExtraction(cacheKey, "vocabulary", chunkSettings, items, vocabProviderStr);
-                  }
-                  
-                  const chunkDuration = ((performance.now() - chunkStartTime) / 1000).toFixed(2);
-                  console.log(`[Job ${jobId}][Vocab Chunk ${index + 1}/${transcriptChunks.length}] ✅ Success | ${items.length} items | ${chunkDuration}s`);
-                  
-                  return { items, chunkText: chunk, success: true };
-                } catch (e: any) {
-                  const chunkDuration = ((performance.now() - chunkStartTime) / 1000).toFixed(2);
-                  console.error(`[Job ${jobId}][Vocab Chunk ${index + 1}/${transcriptChunks.length}] ❌ Failed after retries | ${chunkDuration}s`, e.message);
-                  return { items: [], chunkText: chunk, success: false };
-                }
-              });
-            });
-            
-            // Promise.all preserves the original array order!
-            const chunksResults = await Promise.all(chunkPromises);
-            
-            let allVocabItems: any[] = [];
-            let failedChunksText: string[] = [];
-            
-            for (const result of chunksResults) {
-              if (result.success && result.items.length > 0) {
-                allVocabItems = allVocabItems.concat(result.items);
-              } else if (!result.success) {
-                failedChunksText.push(result.chunkText);
+          // Process all vocab chunks in PARALLEL (safe: each chunk has its own try/catch)
+          const chunkPromises = transcriptChunks.map((chunk, index) => {
+            const chunkStartTime = performance.now();
+            return (async () => {
+              try {
+                console.log(`[Job ${jobId}][Vocab Chunk ${index + 1}/${transcriptChunks.length}] ⏳ Starting...`);
+                const extraction = await extractVocabulary(chunk, chunkSettings);
+                const items = extraction?.items || [];
+                const chunkDuration = ((performance.now() - chunkStartTime) / 1000).toFixed(2);
+                console.log(`[Job ${jobId}][Vocab Chunk ${index + 1}/${transcriptChunks.length}] ✅ ${items.length} words | ${chunkDuration}s`);
+                return { items, success: true };
+              } catch (e: any) {
+                const chunkDuration = ((performance.now() - chunkStartTime) / 1000).toFixed(2);
+                console.error(`[Job ${jobId}][Vocab Chunk ${index + 1}/${transcriptChunks.length}] ❌ Failed | ${chunkDuration}s`, e.message);
+                return { items: [], success: false };
               }
-            }
-      
-            allVocabItems = allVocabItems.slice(0, MAX_WORDS);
-            
-            return {
-              formattedItems: allVocabItems.map(item => ({
-              job_id: jobId,
-              user_id: job.user_id,
-              term: item.term,
-              lemma: item.lemma,
-              pronunciation: item.pronunciation,
-              part_of_speech: item.partOfSpeech,
-              level: item.level,
-              meaning_vi: item.meaningVi,
-              context_meaning_vi: item.contextMeaningVi,
-              original_sentence: item.originalSentence,
-              sentence_translation_vi: item.sentenceTranslationVi,
-              usage_note_vi: item.usageNoteVi,
-              examples: item.examples,
-              collocations: item.collocations,
-              synonyms: item.synonyms,
-              antonyms: item.antonyms,
-              word_family: item.wordFamily,
-              related_words: item.relatedWords,
-              common_mistakes_vi: item.commonMistakesVi,
-              tags: item.tags,
-              confidence: item.confidence ? Number(item.confidence) : 1.0,
-              simplified: item.simplified,
-              traditional: item.traditional,
-              pinyin: item.pinyin,
-              measure_words: item.measureWords,
-              hsk_level: item.hskLevel ? Number(item.hskLevel) : null,
-            })),
-            failedChunksText: failedChunksText
-          };
-          })();
+            })();
+          });
 
-          // AWAIT BOTH IN PARALLEL
-          const [grammarInserts, vocabResult] = await Promise.all([grammarPromise, vocabPromise]);
-          const vocabInserts = vocabResult.formattedItems;
-          const failedChunks = vocabResult.failedChunksText;
-          
-          if (grammarInserts && grammarInserts.length > 0) {
-            console.log(`[Job ${jobId}][Grammar] ✅ Success | ${grammarInserts.length} items`);
+          // Await both in parallel
+          const [grammarInserts, chunkResults] = await Promise.all([grammarPromise, Promise.all(chunkPromises)]);
+
+          let allVocabItems: any[] = [];
+          for (const result of chunkResults) {
+            if (result.items.length > 0) {
+              allVocabItems = allVocabItems.concat(result.items);
+            }
           }
 
           const totalDuration = ((performance.now() - startTime) / 1000).toFixed(2);
-          console.log(`[Job ${jobId}] 🎉 AI Extraction Completed in ${totalDuration}s`);
-      
-          // INSERT INTO DATABASE
-          if (vocabInserts && vocabInserts.length > 0) {
+          console.log(`[Job ${jobId}] 🎉 AI Extraction Completed in ${totalDuration}s | ${allVocabItems.length} vocab + ${grammarInserts.length} grammar`);
+
+          allVocabItems = allVocabItems.slice(0, MAX_WORDS);
+
+          // --- Insert vocab ---
+          const vocabInserts = allVocabItems.map((item: any) => ({
+            job_id: jobId,
+            user_id: job.user_id,
+            term: item.term,
+            lemma: item.lemma,
+            pronunciation: item.pronunciation,
+            part_of_speech: item.partOfSpeech,
+            level: item.level,
+            meaning_vi: item.meaningVi,
+            context_meaning_vi: item.contextMeaningVi,
+            original_sentence: item.originalSentence,
+            sentence_translation_vi: item.sentenceTranslationVi,
+            usage_note_vi: item.usageNoteVi,
+            examples: item.examples,
+            collocations: item.collocations,
+            synonyms: item.synonyms,
+            antonyms: item.antonyms,
+            word_family: item.wordFamily,
+            related_words: item.relatedWords,
+            common_mistakes_vi: item.commonMistakesVi,
+            tags: item.tags,
+            confidence: item.confidence ? Number(item.confidence) : 1.0,
+            simplified: item.simplified,
+            traditional: item.traditional,
+            pinyin: item.pinyin,
+            measure_words: item.measureWords,
+            hsk_level: item.hskLevel ? Number(item.hskLevel) : null,
+          }));
+
+          if (vocabInserts.length > 0) {
             await supabase.from("vocabulary_items").insert(vocabInserts);
           }
-          if (grammarInserts && grammarInserts.length > 0) {
+
+          if (grammarInserts.length > 0) {
             await supabase.from("grammar_items").insert(grammarInserts);
           }
       
           // Mark as completed
-          await supabase.from("transcript_jobs").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", jobId);
-          await supabase.from("media_assets").update({ status: "ready" }).eq("id", asset.id);
-
-          // FIRE AND FORGET BACKGROUND RETRY
-          if (failedChunks && failedChunks.length > 0) {
-            console.log(`[Job ${jobId}] 🔥 Triggering background retry for ${failedChunks.length} failed chunks...`);
-            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-            fetch(`${baseUrl}/api/internal/retry-chunks`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                jobId,
-                userId: job.user_id,
-                chunks: failedChunks,
-                settings: chunkSettings,
-              })
-            }).catch(e => console.error(`[Job ${jobId}] Failed to trigger background retry:`, e));
-          }
       
     }
-    
+    await supabase.from("transcript_jobs").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", jobId);
+    await supabase.from("media_assets").update({ status: "ready" }).eq("id", asset.id);
+
     // Cleanup
     if (fs.existsSync(/*turbopackIgnore: true*/ tmpFilePath)) fs.unlinkSync(tmpFilePath);
     if (audioPath !== tmpFilePath && fs.existsSync(/*turbopackIgnore: true*/ audioPath)) fs.unlinkSync(audioPath);

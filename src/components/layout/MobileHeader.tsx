@@ -3,18 +3,19 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Sparkles, LayoutDashboard, Library, BookOpen, LineChart, Settings, Zap } from "lucide-react";
+import { Menu, X, Sparkles, LayoutDashboard, Library, BookOpen, LineChart, Settings, Zap, Lock } from "lucide-react";
 import UserMenuClient from "./UserMenuClient";
+import { PlanFeatures } from "@/lib/plans";
 
-export default function MobileHeader({ user }: { user: any }) {
+export default function MobileHeader({ user, planFeatures }: { user: any, planFeatures?: PlanFeatures }) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   
   const navItems = [
     { name: "Trang chủ", href: "/dashboard", icon: LayoutDashboard },
     { name: "Thống kê", href: user ? "/analytics" : "/login", icon: LineChart },
-    { name: "Kho Video", href: user ? "/library" : "/login", icon: Library },
-    { name: "Kho Từ vựng", href: user ? "/vocabulary" : "/login", icon: BookOpen },
+    { name: "Kho Video", href: user ? "/library" : "/login", icon: Library, locked: planFeatures && !planFeatures.enable_library },
+    { name: "Kho Từ vựng", href: user ? "/vocabulary" : "/login", icon: BookOpen, locked: planFeatures && !planFeatures.enable_vocabulary },
     { name: "Cài đặt", href: user ? "/settings" : "/login", icon: Settings },
   ];
 
@@ -70,12 +71,17 @@ export default function MobileHeader({ user }: { user: any }) {
               return (
                 <Link 
                   key={item.name} 
-                  href={item.href}
+                  href={item.locked ? "/pricing" : item.href}
                   onClick={() => setIsOpen(false)} 
-                  className={`flex items-center gap-4 px-4 py-3.5 rounded-xl font-semibold text-[15px] transition-all ${ isActive ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400' : 'text-slate-600 active:bg-slate-50 hover:bg-slate-50 dark:text-neutral-300 dark:hover:bg-neutral-900' }`}
+                  className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-semibold text-[15px] transition-all ${ isActive ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400' : 'text-slate-600 active:bg-slate-50 hover:bg-slate-50 dark:text-neutral-300 dark:hover:bg-neutral-900' }`}
                 >
-                  <Icon className="w-5 h-5" />
-                  {item.name}
+                  <div className="flex items-center gap-4">
+                    <Icon className="w-5 h-5" />
+                    {item.name}
+                  </div>
+                  {item.locked && (
+                    <Lock className="w-4 h-4 text-neutral-400" />
+                  )}
                 </Link>
               );
             })}
@@ -83,7 +89,7 @@ export default function MobileHeader({ user }: { user: any }) {
             
             {/* Upgrade CTA */}
             <div className="p-4 shrink-0">
-              {user?.user_metadata?.plan === 'pro' ? (
+              {planFeatures?.name === 'PRO' || planFeatures?.name === 'LIFETIME' ? (
                 <div className="bg-gradient-to-b from-indigo-50 to-blue-50 dark:from-indigo-500/10 dark:to-blue-500/10 border border-indigo-200 dark:border-indigo-500/20 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Sparkles className="w-5 h-5 text-indigo-500 dark:text-indigo-400 fill-indigo-500 dark:fill-indigo-400" />
@@ -94,7 +100,7 @@ export default function MobileHeader({ user }: { user: any }) {
                     Xem chi tiết
                   </Link>
                 </div>
-              ) : user?.user_metadata?.plan === 'basic' ? (
+              ) : planFeatures?.name === 'BASIC' ? (
                 <div className="bg-gradient-to-b from-emerald-50 to-teal-50 dark:from-emerald-500/10 dark:to-teal-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Sparkles className="w-5 h-5 text-emerald-500 dark:text-emerald-400 fill-emerald-500 dark:fill-emerald-400" />
