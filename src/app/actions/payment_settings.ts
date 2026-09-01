@@ -1,16 +1,20 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkAdmin } from "./admin";
 import { revalidatePath } from "next/cache";
 
 export async function savePaymentSettingsAction(data: {
+  id?: string;
   bank_code: string;
   account_number: string;
   account_name: string;
   support_contact: string;
   is_active: boolean;
   is_default: boolean;
+  payment_timeout_minutes?: number;
 }) {
+  if (!(await checkAdmin())) return { success: false, error: "Unauthorized" };
   const adminClient = createAdminClient();
 
   if (data.is_default) {
@@ -31,6 +35,7 @@ export async function savePaymentSettingsAction(data: {
 }
 
 export async function setDefaultPaymentSettingsAction(id: string) {
+  if (!(await checkAdmin())) return { success: false, error: "Unauthorized" };
   const adminClient = createAdminClient();
   
   // Unset current default
@@ -46,6 +51,7 @@ export async function setDefaultPaymentSettingsAction(id: string) {
 }
 
 export async function deletePaymentSettingsAction(id: string) {
+  if (!(await checkAdmin())) return { success: false, error: "Unauthorized" };
   const adminClient = createAdminClient();
   const { error } = await adminClient.from('payment_settings').delete().eq('id', id);
   

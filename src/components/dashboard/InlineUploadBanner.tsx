@@ -172,7 +172,11 @@ export default function InlineUploadBanner({
           keepalive: true
         }).catch(e => console.error("Webhook failed:", e));
         
-        router.push(`/${module === 'shadowing' ? 'shadowing' : 'video'}/${createdJob.media_asset_id}`);
+        // Use toast instead of redirect
+        toast.success(
+          "Đã thêm video vào hàng đợi xử lý! Vui lòng chờ thông báo khi hoàn tất.",
+          { duration: 5000 }
+        );
       }
 
     } catch (err: any) {

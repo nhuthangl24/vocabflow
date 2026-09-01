@@ -98,6 +98,11 @@ export default function ShadowingUploadBanner({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ jobId: createdJob.id })
         }).catch(e => console.error("Webhook failed:", e));
+
+        toast.success(
+          "Đã thêm video vào hàng đợi xử lý! Vui lòng chờ thông báo khi hoàn tất.",
+          { duration: 5000 }
+        );
       }
 
     } catch (err: any) {

@@ -2,9 +2,11 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkAdmin } from "./admin";
 import { revalidatePath } from "next/cache";
 
 export async function upgradePlanAction(planName: string) {
+  if (!(await checkAdmin())) return { success: false, error: "Unauthorized" };
   const supabase = await createClient();
   
   const { data: { user } } = await supabase.auth.getUser();

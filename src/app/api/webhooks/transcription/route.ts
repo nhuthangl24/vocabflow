@@ -394,6 +394,15 @@ async function processJob(jobId: string) {
     }
     await supabase.from("transcript_jobs").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", jobId);
     await supabase.from("media_assets").update({ status: "ready" }).eq("id", asset.id);
+    
+    // Create notification
+    const moduleName = job.settings?.module === 'shadowing' ? 'Video Shadowing' : 'Video Từ vựng';
+    await supabase.from("notification_history").insert({
+      user_id: asset.user_id,
+      title: "Xử lý video hoàn tất! 🎉",
+      content: `Video "${asset.title}" đã được xử lý xong. Bạn có thể tải lại trang để bắt đầu học ngay.`,
+      type: "system"
+    });
 
     // Cleanup
     if (fs.existsSync(/*turbopackIgnore: true*/ tmpFilePath)) fs.unlinkSync(tmpFilePath);

@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkAdmin } from "./admin";
 
 export async function createOrderAction(planName: string, amount: number) {
   const supabase = await createClient();
@@ -73,6 +74,7 @@ export async function createOrderAction(planName: string, amount: number) {
 // ============================================================================
 
 export async function approveOrderAction(orderId: string) {
+  if (!(await checkAdmin())) return { success: false, error: "Unauthorized" };
   const adminClient = createAdminClient();
   
   // Verify Admin (Optional: should be protected by middleware/layout anyway)
@@ -121,6 +123,7 @@ export async function approveOrderAction(orderId: string) {
 }
 
 export async function rejectOrderAction(orderId: string, reason?: string): Promise<{ success: boolean; error?: string }> {
+  if (!(await checkAdmin())) return { success: false, error: "Unauthorized" };
   const adminClient = createAdminClient();
   try {
     const { data: { user } } = await adminClient.auth.getUser();
@@ -151,6 +154,7 @@ export async function rejectOrderAction(orderId: string, reason?: string): Promi
 }
 
 export async function refundOrderAction(orderId: string, reason?: string) {
+  if (!(await checkAdmin())) return { success: false, error: "Unauthorized" };
   const adminClient = createAdminClient();
   const { data: { user } } = await adminClient.auth.getUser();
   
@@ -165,6 +169,7 @@ export async function refundOrderAction(orderId: string, reason?: string) {
 }
 
 export async function addAdminNoteAction(orderId: string, note: string) {
+  if (!(await checkAdmin())) return { success: false, error: "Unauthorized" };
   const adminClient = createAdminClient();
   const { data: { user } } = await adminClient.auth.getUser();
   
@@ -179,6 +184,8 @@ export async function addAdminNoteAction(orderId: string, note: string) {
 }
 
 export async function expireOrderAction(orderId: string) {
+  if (!(await checkAdmin())) return { success: false, error: "Unauthorized" };
+  const adminClient = createAdminClient();
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Unauthorized" };
