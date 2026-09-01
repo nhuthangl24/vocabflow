@@ -164,7 +164,7 @@ async function processJob(jobId: string) {
           execFile('yt-dlp', args, (error: any, stdout: any, stderr: any) => {
             if (error) {
               console.error("yt-dlp error:", stderr);
-              reject(new Error("Failed to download youtube video with yt-dlp"));
+              reject(new Error(`Failed to download youtube video with yt-dlp: ${stderr || error.message || error}`));
             } else {
               resolve();
             }
