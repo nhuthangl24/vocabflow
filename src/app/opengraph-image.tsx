@@ -19,22 +19,75 @@ export default function Image() {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          background: 'linear-gradient(135deg, #0f172a 0%, #312e81 100%)',
+          backgroundColor: '#030712',
+          backgroundImage: 'radial-gradient(circle at 50% -20%, #4f46e5 0%, #1e1b4b 40%, #030712 100%)',
           color: 'white',
           padding: '80px',
           fontFamily: 'sans-serif',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ fontSize: '140px', fontWeight: 900, color: '#e0e7ff', letterSpacing: '-0.05em' }}>
+        {/* Glow effect in background */}
+        <div
+          style={{
+            position: 'absolute',
+            top: '20%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: '600px',
+            height: '200px',
+            background: 'radial-gradient(ellipse at center, rgba(99, 102, 241, 0.4) 0%, rgba(0,0,0,0) 70%)',
+            zIndex: 0,
+          }}
+        />
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div
+            style={{
+              fontSize: '150px',
+              fontWeight: 900,
+              color: '#ffffff',
+              letterSpacing: '-0.06em',
+              textShadow: '0 10px 40px rgba(99, 102, 241, 0.8)',
+            }}
+          >
             LUMINA
           </div>
         </div>
-        <div style={{ fontSize: '48px', fontWeight: 600, marginTop: '50px', color: '#94a3b8', textAlign: 'center', maxWidth: '900px', lineHeight: 1.4 }}>
-          Khám phá và học từ vựng, ngữ pháp từ bất kỳ video YouTube nào với AI.
+
+        <div
+          style={{
+            display: 'flex',
+            fontSize: '44px',
+            fontWeight: 500,
+            marginTop: '40px',
+            color: '#cbd5e1',
+            textAlign: 'center',
+            maxWidth: '950px',
+            lineHeight: 1.5,
+            zIndex: 10,
+            letterSpacing: '-0.01em',
+          }}
+        >
+          Khám phá và học từ vựng, ngữ pháp từ bất kỳ video YouTube nào với sức mạnh của AI.
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', marginTop: '60px', padding: '16px 32px', background: 'rgba(99, 102, 241, 0.2)', borderRadius: '100px', border: '2px solid rgba(99, 102, 241, 0.5)', color: '#818cf8', fontSize: '32px', fontWeight: 700 }}>
-          lumina-vocab.com
+
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            marginTop: '70px',
+            padding: '18px 48px',
+            background: 'linear-gradient(90deg, rgba(79, 70, 229, 0.15) 0%, rgba(124, 58, 237, 0.15) 100%)',
+            borderRadius: '100px',
+            border: '1px solid rgba(139, 92, 246, 0.4)',
+            color: '#c4b5fd',
+            fontSize: '28px',
+            fontWeight: 600,
+            zIndex: 10,
+            boxShadow: '0 8px 32px rgba(79, 70, 229, 0.2)',
+          }}
+        >
+          luminastudy.site
         </div>
       </div>
     ),

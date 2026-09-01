@@ -11,7 +11,7 @@ const itim = Itim({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://lumina.com'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://luminastudy.site'),
   title: {
     template: "%s | Lumina Vocabulary",
     default: "Lumina - Học từ vựng qua Video YouTube với AI",
