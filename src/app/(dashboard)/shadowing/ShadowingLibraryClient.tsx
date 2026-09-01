@@ -78,8 +78,34 @@ export default function ShadowingLibraryClient({
   const baseAssets = hideTabs ? assets : (activeTab === "private" ? assets : publicAssets.filter(a => !a.playlist_id));
   const basePlaylists = hideTabs ? [] : (activeTab === "public" ? playlists : []);
   
-  const allItems = [...basePlaylists.map(p => ({...p, isPlaylist: true})), ...baseAssets];
-  const totalItems = allItems.length;
+  // Group playlists by language
+  const LANGUAGE_ORDER = ["English", "Chinese", "Japanese", "Korean", "French", "Spanish", "German", "Other"];
+  const LANGUAGE_FLAGS: Record<string, string> = {
+    English: "🇺🇸", Chinese: "🇨🇳", Japanese: "🇯🇵", Korean: "🇰🇷",
+    French: "🇫🇷", Spanish: "🇪🇸", German: "🇩🇪", Other: "🌐"
+  };
+  const LANGUAGE_VI: Record<string, string> = {
+    English: "Tiếng Anh", Chinese: "Tiếng Trung", Japanese: "Tiếng Nhật",
+    Korean: "Tiếng Hàn", French: "Tiếng Pháp", Spanish: "Tiếng Tây Ban Nha",
+    German: "Tiếng Đức", Other: "Khác"
+  };
+
+  const playlistsByLanguage = basePlaylists.reduce((acc: Record<string, typeof basePlaylists>, pl: any) => {
+    const lang = pl.language || "English";
+    if (!acc[lang]) acc[lang] = [];
+    acc[lang].push(pl);
+    return acc;
+  }, {});
+
+  // Languages that have playlists (in defined order)
+  const activeLanguages = LANGUAGE_ORDER.filter(l => playlistsByLanguage[l]?.length > 0);
+  // Also catch any languages not in the defined order
+  Object.keys(playlistsByLanguage).forEach(l => {
+    if (!activeLanguages.includes(l)) activeLanguages.push(l);
+  });
+
+  const allItems = [...basePlaylists.map((p: any) => ({...p, isPlaylist: true})), ...baseAssets];
+  const totalItems = activeTab === "public" ? (basePlaylists.length + baseAssets.length) : assets.length;
 
   if (totalItems === 0) {
     return (
@@ -135,134 +161,194 @@ export default function ShadowingLibraryClient({
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {allItems.map((item) => {
-          if (item.isPlaylist) {
-            const count = publicAssets.filter(a => a.playlist_id === item.id).length;
+      {/* Public tab: language-grouped sections */}
+      {activeTab === "public" && !hideTabs ? (
+        <div className="flex flex-col gap-10">
+          {activeLanguages.length === 0 && baseAssets.length === 0 && (
+            <div className="py-16 text-center text-slate-500 dark:text-neutral-500">Chưa có nội dung nào.</div>
+          )}
+          {activeLanguages.map(lang => {
+            const langPlaylists = playlistsByLanguage[lang] || [];
             return (
-              <Link href={`/shadowing/playlist/${item.id}`} key={`pl-${item.id}`} className="h-full group bg-white dark:bg-[#0a0a0a] rounded-2xl border border-slate-200 dark:border-neutral-800 overflow-hidden hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-all duration-300 flex flex-col">
-                <div className="aspect-video relative bg-slate-900 overflow-hidden">
-                  {item.thumbnail_url ? (
-                    <img src={item.thumbnail_url} alt="Playlist" className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-500" />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-indigo-900 to-slate-900 opacity-90 group-hover:scale-105 transition-transform duration-500" />
-                  )}
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm border border-white/20 flex items-center justify-center">
-                      <Layers className="w-6 h-6 text-white" />
-                    </div>
-                  </div>
-                  <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
-                    {count} VIDEO
-                  </div>
+              <section key={lang}>
+                {/* Section header */}
+                <div className="flex items-center gap-3 mb-5">
+                  <span className="text-2xl">{LANGUAGE_FLAGS[lang] || "🌐"}</span>
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">{LANGUAGE_VI[lang] || lang}</h2>
+                  <span className="ml-1 px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 text-xs font-medium border border-indigo-500/20">
+                    {langPlaylists.length} playlist
+                  </span>
+                  <div className="flex-1 h-px bg-slate-200 dark:bg-neutral-800 ml-2" />
                 </div>
-                <div className="p-4 flex flex-col flex-1">
-                  <h3 className="font-bold text-slate-900 dark:text-white line-clamp-2 mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                    {item.title}
-                  </h3>
-                  <div className="mt-auto flex items-center justify-between text-xs text-slate-500 dark:text-neutral-400">
-                    <span className="font-medium">Playlist</span>
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {langPlaylists.map((item: any) => {
+                    const count = publicAssets.filter((a: any) => a.playlist_id === item.id).length;
+                    return (
+                      <Link href={`/shadowing/playlist/${item.id}`} key={`pl-${item.id}`} className="h-full group bg-white dark:bg-[#0a0a0a] rounded-2xl border border-slate-200 dark:border-neutral-800 overflow-hidden hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-all duration-300 flex flex-col">
+                        <div className="aspect-video relative bg-slate-900 overflow-hidden">
+                          {item.thumbnail_url ? (
+                            <img src={item.thumbnail_url} alt="Playlist" className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-500" />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-indigo-900 to-slate-900 opacity-90 group-hover:scale-105 transition-transform duration-500" />
+                          )}
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm border border-white/20 flex items-center justify-center">
+                              <Layers className="w-6 h-6 text-white" />
+                            </div>
+                          </div>
+                          <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
+                            {count} VIDEO
+                          </div>
+                        </div>
+                        <div className="p-4 flex flex-col flex-1">
+                          <h3 className="font-bold text-slate-900 dark:text-white line-clamp-2 mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                            {item.title}
+                          </h3>
+                          <div className="mt-auto flex items-center justify-between text-xs text-slate-500 dark:text-neutral-400">
+                            <span className="font-medium">Playlist</span>
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
-              </Link>
+              </section>
             );
-          }
+          })}
 
-          const asset = item;
-          const isProcessing = asset.status !== 'ready' && asset.status !== 'failed';
-          const isDeleting = deleting === asset.id;
-          const isNavigating = navigating === asset.id;
-        return (
-          <div key={asset.id} className="relative group h-full flex flex-col">
-            <Link
-              href={isProcessing ? "#" : `/shadowing/${asset.id}`}
-              onClick={(e) => {
-                if (isProcessing || isDeleting) {
-                  e.preventDefault();
-                  return;
-                }
-                setNavigating(asset.id);
-              }}
-              className={`flex-1 bg-white dark:bg-[#0a0a0a] rounded-2xl border border-slate-200 dark:border-neutral-800 overflow-hidden hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-all duration-300 flex flex-col ${(isDeleting || isNavigating) ? 'opacity-50 pointer-events-none' : ''}`}
-            >
-              <div className="aspect-video relative bg-slate-900 overflow-hidden">
-                {(asset.type === 'youtube' && asset.source_url) ? (
-                  <img
-                    src={`https://img.youtube.com/vi/${asset.source_url.match(/(?:v=|youtu\.be\/)([^&?]+)/)?.[1]}/hqdefault.jpg`}
-                    alt={asset.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-slate-800">
-                    <Play className="w-12 h-12 text-white/30" />
+          {/* Standalone public videos (no playlist) */}
+          {baseAssets.length > 0 && (
+            <section>
+              <div className="flex items-center gap-3 mb-5">
+                <span className="text-2xl">🎬</span>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Video Lẻ</h2>
+                <div className="flex-1 h-px bg-slate-200 dark:bg-neutral-800 ml-2" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {baseAssets.map((asset: any) => {
+                  const isProcessing = asset.status !== 'ready' && asset.status !== 'failed';
+                  const isNavigating = navigating === asset.id;
+                  return (
+                    <Link key={asset.id} href={isProcessing ? "#" : `/shadowing/${asset.id}`}
+                      onClick={(e) => { if (isProcessing) { e.preventDefault(); return; } setNavigating(asset.id); }}
+                      className={`group bg-white dark:bg-[#0a0a0a] rounded-2xl border border-slate-200 dark:border-neutral-800 overflow-hidden hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-all duration-300 flex flex-col ${isNavigating ? 'opacity-50 pointer-events-none' : ''}`}
+                    >
+                      <div className="aspect-video relative bg-slate-900 overflow-hidden">
+                        {asset.thumbnail_url ? (
+                          <img src={asset.thumbnail_url} alt={asset.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        ) : (asset.type === 'youtube' && asset.source_url) ? (
+                          <img src={`https://img.youtube.com/vi/${asset.source_url.match(/(?:v=|youtu\.be\/)([^&?]+)/)?.[1]}/hqdefault.jpg`} alt={asset.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-slate-800"><Play className="w-12 h-12 text-white/30" /></div>
+                        )}
+                        {isProcessing && <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center"><span className="text-white text-xs font-bold">Đang xử lý...</span></div>}
+                      </div>
+                      <div className="p-4 flex-1 flex flex-col">
+                        <h3 className="font-bold text-slate-900 dark:text-white line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{asset.title}</h3>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+        </div>
+      ) : (
+        /* Private tab: user's own videos */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {assets.map((asset) => {
+            const isProcessing = asset.status !== 'ready' && asset.status !== 'failed';
+            const isDeleting = deleting === asset.id;
+            const isNavigating = navigating === asset.id;
+            return (
+              <div key={asset.id} className="relative group h-full flex flex-col">
+                <Link
+                  href={isProcessing ? "#" : `/shadowing/${asset.id}`}
+                  onClick={(e) => {
+                    if (isProcessing || isDeleting) { e.preventDefault(); return; }
+                    setNavigating(asset.id);
+                  }}
+                  className={`flex-1 bg-white dark:bg-[#0a0a0a] rounded-2xl border border-slate-200 dark:border-neutral-800 overflow-hidden hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-all duration-300 flex flex-col ${(isDeleting || isNavigating) ? 'opacity-50 pointer-events-none' : ''}`}
+                >
+                  <div className="aspect-video relative bg-slate-900 overflow-hidden">
+                    {asset.thumbnail_url ? (
+                      <img src={asset.thumbnail_url} alt={asset.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    ) : (asset.type === 'youtube' && asset.source_url) ? (
+                      <img
+                        src={`https://img.youtube.com/vi/${asset.source_url.match(/(?:v=|youtu\.be\/)([^&?]+)/)?.[1]}/hqdefault.jpg`}
+                        alt={asset.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-slate-800">
+                        <Play className="w-12 h-12 text-white/30" />
+                      </div>
+                    )}
+
+                    {(isProcessing || isNavigating) && (
+                      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex flex-col items-center justify-center">
+                        <svg className="animate-spin h-8 w-8 text-white mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span className="text-white text-xs font-bold">{isNavigating ? 'Đang tải...' : 'Đang xử lý...'}</span>
+                      </div>
+                    )}
+
+                    {asset.status === 'failed' && (
+                      <div className="absolute inset-0 bg-rose-900/60 backdrop-blur-sm flex flex-col items-center justify-center">
+                        <span className="text-white text-xs font-bold">Lỗi xử lý</span>
+                      </div>
+                    )}
+
+                    {!isProcessing && asset.status !== 'failed' && (
+                      <div className="absolute inset-0 bg-indigo-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300">
+                        <div className="w-14 h-14 bg-white text-indigo-600 rounded-full flex items-center justify-center shadow-lg transform scale-50 group-hover:scale-100 transition-transform duration-300 delay-100">
+                          <Headphones className="w-6 h-6" />
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
 
-                {(isProcessing || isNavigating) && (
-                  <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex flex-col items-center justify-center">
-                    <svg className="animate-spin h-8 w-8 text-white mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span className="text-white text-xs font-bold">{isNavigating ? 'Đang tải...' : 'Đang xử lý...'}</span>
-                  </div>
-                )}
-
-                {asset.status === 'failed' && (
-                  <div className="absolute inset-0 bg-rose-900/60 backdrop-blur-sm flex flex-col items-center justify-center">
-                    <span className="text-white text-xs font-bold">Lỗi xử lý</span>
-                  </div>
-                )}
-
-                {/* Hover Play overlay */}
-                {!isProcessing && asset.status !== 'failed' && (
-                  <div className="absolute inset-0 bg-indigo-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300">
-                    <div className="w-14 h-14 bg-white text-indigo-600 rounded-full flex items-center justify-center shadow-lg transform scale-50 group-hover:scale-100 transition-transform duration-300 delay-100">
-                      <Headphones className="w-6 h-6" />
+                  <div className="p-4 flex flex-col flex-1">
+                    <h3 className="font-bold text-slate-900 dark:text-white line-clamp-2 mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                      {asset.title}
+                    </h3>
+                    <div className="mt-auto flex items-center justify-between text-xs text-slate-500 dark:text-neutral-400">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5" />
+                        {new Date(asset.created_at).toLocaleDateString('vi-VN')}
+                      </div>
                     </div>
                   </div>
+                </Link>
+
+                {activeTab === "private" && (
+                  <button
+                    onClick={(e) => handleDeleteClick(e, asset.id)}
+                    disabled={isDeleting}
+                    className={`absolute top-2 right-2 z-10 p-2 text-white rounded-full transition-all duration-200 backdrop-blur-sm ${
+                      confirmId === asset.id 
+                        ? 'opacity-100 bg-rose-600 scale-110 animate-pulse' 
+                        : 'opacity-0 group-hover:opacity-100 bg-black/60 hover:bg-rose-600'
+                    }`}
+                    title={confirmId === asset.id ? "Bấm lần nữa để xóa" : "Xóa video"}
+                  >
+                    {isDeleting ? (
+                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
+                  </button>
                 )}
               </div>
-
-              <div className="p-4 flex flex-col flex-1">
-                <h3 className="font-bold text-slate-900 dark:text-white line-clamp-2 mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                  {asset.title}
-                </h3>
-                <div className="mt-auto flex items-center justify-between text-xs text-slate-500 dark:text-neutral-400">
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5" />
-                    {new Date(asset.created_at).toLocaleDateString('vi-VN')}
-                  </div>
-                </div>
-              </div>
-            </Link>
-
-              {/* Delete button (only for private assets) */}
-              {activeTab === "private" && (
-                <button
-                  onClick={(e) => handleDeleteClick(e, asset.id)}
-                  disabled={isDeleting}
-                  className={`absolute top-2 right-2 z-10 p-2 text-white rounded-full transition-all duration-200 backdrop-blur-sm ${
-                    confirmId === asset.id 
-                      ? 'opacity-100 bg-rose-600 scale-110 animate-pulse' 
-                      : 'opacity-0 group-hover:opacity-100 bg-black/60 hover:bg-rose-600'
-                  }`}
-                  title={confirmId === asset.id ? "Bấm lần nữa để xóa" : "Xóa video"}
-                >
-                  {isDeleting ? (
-                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  ) : (
-                    <Trash2 className="w-4 h-4" />
-                  )}
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {confirmId && (

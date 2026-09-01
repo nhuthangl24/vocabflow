@@ -107,6 +107,7 @@ export async function createAdminMediaJob(params: {
       source_url: params.sourceUrl,
       status: "pending",
       is_public: true,
+      publish_status: "published",
       playlist_id: params.playlistId || null,
       module: params.module || 'vocabulary'
     }])

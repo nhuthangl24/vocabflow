@@ -100,9 +100,10 @@ export function SRSAdminClient({ flashcards, totalCards, totalReviews }: Props) 
         ))}
       </div>
 
-      <div className="bg-[#0a0a0a] rounded-xl border border-neutral-800/60 overflow-hidden">
-        <table className="w-full text-left text-sm text-neutral-400">
-          <thead className="text-xs text-neutral-500 bg-neutral-900/50 uppercase tracking-wider border-b border-neutral-800/60">
+      <div className="bg-[#0a0a0a] rounded-xl border border-neutral-800/60 overflow-hidden shadow-xl shadow-black/40">
+        <div className="overflow-auto max-h-[70vh]">
+          <table className="w-full text-left text-sm text-neutral-400">
+            <thead className="text-xs text-neutral-500 bg-neutral-900/90 backdrop-blur-md uppercase tracking-wider border-b border-neutral-800/60 sticky top-0 z-10 shadow-sm shadow-black/20">
             <tr>
               <th className="px-6 py-4 font-medium">Term</th>
               <th className="px-6 py-4 font-medium">User</th>
@@ -138,6 +139,7 @@ export function SRSAdminClient({ flashcards, totalCards, totalReviews }: Props) 
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

@@ -54,7 +54,7 @@ export default function SidebarNav({ isCollapsed, user, planFeatures }: SidebarN
             key={item.name} 
             href={item.locked ? "/pricing" : item.href} 
             title={isCollapsed ? item.name : undefined}
-            className={`flex items-center justify-between ${isCollapsed ? 'p-2.5 mx-auto w-12 h-12' : 'px-3 py-2'} rounded-xl font-semibold text-[13px] transition-colors ${ isActive ? 'bg-indigo-50 text-indigo-700 shadow-sm dark:bg-neutral-800 dark:text-white' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800' }`}
+            className={`flex items-center ${isCollapsed ? 'justify-center mx-auto w-11 h-11' : 'justify-between px-3 py-2'} rounded-xl font-semibold text-[13px] transition-colors ${ isActive ? 'bg-indigo-50 text-indigo-700 shadow-sm dark:bg-neutral-800 dark:text-white' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800' }`}
           >
             <div className="flex items-center gap-3">
               <Icon className={isCollapsed ? "w-5 h-5" : "w-4 h-4"} />

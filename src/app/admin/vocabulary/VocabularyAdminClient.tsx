@@ -32,12 +32,11 @@ const LEVEL_COLORS: Record<string, string> = {
   C2: "bg-purple-500/10 text-purple-400 border-purple-500/20",
 };
 
-export default function VocabularyAdminClient({ items, totalCount, termCount, userCount, levelBreakdown }: Props) {
+export default function VocabularyAdminClient({ items: initialItems, totalCount, termCount, userCount, levelBreakdown }: Props) {
+  const [items] = useState<VocabItem[]>(initialItems);
   const [search, setSearch] = useState("");
   const [levelFilter, setLevelFilter] = useState("all");
   const [posFilter, setPosFilter] = useState("all");
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 50;
 
   const filtered = useMemo(() => {
     return items.filter((item) => {
@@ -127,14 +126,14 @@ export default function VocabularyAdminClient({ items, totalCount, termCount, us
           <input
             type="text"
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="Tìm từ vựng hoặc nghĩa..."
             className="w-full pl-9 pr-4 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-sm text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
           />
         </div>
         <select
           value={levelFilter}
-          onChange={(e) => { setLevelFilter(e.target.value); setCurrentPage(1); }}
+          onChange={(e) => setLevelFilter(e.target.value)}
           className="px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-sm text-neutral-200 focus:outline-none focus:border-indigo-500 transition-all"
         >
           {levels.map((l) => (
@@ -145,7 +144,7 @@ export default function VocabularyAdminClient({ items, totalCount, termCount, us
         </select>
         <select
           value={posFilter}
-          onChange={(e) => { setPosFilter(e.target.value); setCurrentPage(1); }}
+          onChange={(e) => setPosFilter(e.target.value)}
           className="px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-sm text-neutral-200 focus:outline-none focus:border-indigo-500 transition-all"
         >
           {posTags.map((p) => (
@@ -161,9 +160,9 @@ export default function VocabularyAdminClient({ items, totalCount, termCount, us
 
       {/* Table */}
       <div className="bg-[#0a0a0a] rounded-xl border border-neutral-800/60 overflow-hidden shadow-xl shadow-black/40">
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[70vh]">
           <table className="w-full text-left text-sm text-neutral-400">
-            <thead className="text-xs text-neutral-500 bg-neutral-900/40 uppercase tracking-wider border-b border-neutral-800/60">
+            <thead className="text-xs text-neutral-500 bg-neutral-900/90 backdrop-blur-md uppercase tracking-wider border-b border-neutral-800/60 sticky top-0 z-10 shadow-sm shadow-black/20">
               <tr>
                 <th className="px-5 py-3.5 font-medium">Từ vựng</th>
                 <th className="px-5 py-3.5 font-medium">Nghĩa (VI)</th>
@@ -175,7 +174,7 @@ export default function VocabularyAdminClient({ items, totalCount, termCount, us
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-800/60">
-              {filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((item) => (
+              {filtered.map((item) => (
                 <tr key={item.id} className="hover:bg-neutral-900/30 transition-colors">
                   <td className="px-5 py-3 whitespace-nowrap">
                     <div className="font-semibold text-white">{item.term}</div>
@@ -238,51 +237,6 @@ export default function VocabularyAdminClient({ items, totalCount, termCount, us
             </tbody>
           </table>
         </div>
-        {/* Pagination controls */}
-        {filtered.length > itemsPerPage && (
-          <div className="flex items-center justify-between px-5 py-3 border-t border-neutral-800/60 bg-neutral-900/20">
-            <div className="text-xs text-neutral-500">
-              Hiển thị {(currentPage - 1) * itemsPerPage + 1} đến {Math.min(currentPage * itemsPerPage, filtered.length)} trong {filtered.length} kết quả
-            </div>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="w-8 h-8 flex items-center justify-center rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-400 hover:bg-neutral-800 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              
-              <div className="flex items-center gap-1 mx-2">
-                {Array.from({ length: Math.ceil(filtered.length / itemsPerPage) }, (_, i) => i + 1)
-                  .filter(p => p === 1 || p === Math.ceil(filtered.length / itemsPerPage) || Math.abs(p - currentPage) <= 1)
-                  .map((p, i, arr) => (
-                    <span key={p} className="flex items-center">
-                      {i > 0 && p - arr[i - 1] > 1 && <span className="px-2 text-neutral-600 text-xs">...</span>}
-                      <button
-                        onClick={() => setCurrentPage(p)}
-                        className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-medium transition-all ${
-                          currentPage === p
-                            ? "bg-indigo-500 text-white"
-                            : "text-neutral-400 hover:bg-neutral-800 hover:text-white"
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    </span>
-                  ))}
-              </div>
-
-              <button
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(filtered.length / itemsPerPage)))}
-                disabled={currentPage === Math.ceil(filtered.length / itemsPerPage)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-400 hover:bg-neutral-800 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

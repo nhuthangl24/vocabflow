@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, useRef } from "react";
 import {
   createPlaylist, deletePlaylist, getPlaylists, createAdminMediaJob,
 } from "@/app/actions/admin";
 import {
   Trash2, Plus, Upload, Video, Layers, CheckCircle2, XCircle,
   BookOpen, Zap, Globe, Eye, EyeOff, RefreshCw, Edit2, MoreHorizontal,
-  Filter, Search, ChevronDown, Info, AlertCircle, Clock, CheckCircle,
+  Filter, Search, ChevronDown, Info, AlertCircle, Clock, CheckCircle, FileJson
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { createClient } from "@/lib/supabase/client";
@@ -33,7 +33,7 @@ type MediaAsset = {
   retry_count: number;
 };
 
-type Playlist = { id: string; title: string; created_at: string };
+type Playlist = { id: string; title: string; language: string | null; thumbnail_url: string | null; created_at: string };
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 
@@ -63,14 +63,26 @@ function PublishBadge({ status }: { status: string }) {
 
 // ─── Video Row ───────────────────────────────────────────────────────────────
 
-function VideoRow({ asset, playlists, onAction }: { asset: MediaAsset; playlists: Playlist[]; onAction: (id: string, action: string, value?: any) => void }) {
+function VideoRow({ asset, playlists, onAction, isSelected, onToggleSelect }: { asset: MediaAsset; playlists: Playlist[]; onAction: (id: string, action: string, value?: any) => void; isSelected?: boolean; onToggleSelect?: (id: string) => void; }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const duration = asset.duration_seconds
     ? `${Math.floor(asset.duration_seconds / 60)}:${String(asset.duration_seconds % 60).padStart(2, "0")}`
     : null;
 
   return (
-    <div className="flex items-center gap-4 px-4 py-3 hover:bg-neutral-900/30 transition-colors border-b border-neutral-800/40 last:border-b-0 first:rounded-t-xl last:rounded-b-xl">
+    <div className={`flex items-center gap-4 px-4 py-3 hover:bg-neutral-900/30 transition-colors border-b border-neutral-800/40 last:border-b-0 first:rounded-t-xl last:rounded-b-xl ${isSelected ? 'bg-indigo-500/5' : ''}`}>
+      {/* Checkbox */}
+      {onToggleSelect && (
+        <div className="shrink-0 flex items-center justify-center">
+          <input 
+            type="checkbox" 
+            checked={isSelected}
+            onChange={() => onToggleSelect(asset.id)}
+            className="w-4 h-4 rounded border-neutral-700 bg-neutral-900 text-indigo-500 focus:ring-indigo-500 cursor-pointer accent-indigo-500"
+          />
+        </div>
+      )}
+
       {/* Thumbnail */}
       <div className="w-20 h-12 rounded-lg overflow-hidden bg-neutral-900 shrink-0 relative">
         {asset.thumbnail_url
@@ -248,6 +260,9 @@ export default function AdminLibraryPage() {
   const [loadingAssets, setLoadingAssets] = useState(true);
   const [loadingPlaylists, setLoadingPlaylists] = useState(true);
   const [newTitle, setNewTitle] = useState("");
+  const [newLanguage, setNewLanguage] = useState("English");
+  const [selectedAssets, setSelectedAssets] = useState<string[]>([]);
+  const [deleteConfirmBulk, setDeleteConfirmBulk] = useState(false);
   const [deleteConfirmPlaylist, setDeleteConfirmPlaylist] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<MediaAsset | null>(null);
   const [deleteConfirmMedia, setDeleteConfirmMedia] = useState<string | null>(null);
@@ -267,12 +282,66 @@ export default function AdminLibraryPage() {
   const [filterPublish, setFilterPublish] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
+  // JSON Upload State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [jsonUploading, setJsonUploading] = useState(false);
+  const [jsonPlaylistId, setJsonPlaylistId] = useState("");
+
   const supabase = createClient();
 
   useEffect(() => {
     fetchPlaylists();
     fetchAssets();
   }, []);
+
+  const handleJsonUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    setJsonUploading(true);
+    let successCount = 0;
+    let failCount = 0;
+    const toastId = toast.loading(`Đang xử lý ${files.length} file JSON...`);
+    
+    for (let i = 0; i < files.length; i++) {
+      try {
+        const file = files[i];
+        const text = await file.text();
+        const payload = JSON.parse(text);
+        
+        // Add playlist_id if selected
+        if (jsonPlaylistId) {
+          payload.playlist_id = jsonPlaylistId;
+        }
+        
+        const res = await fetch("/api/admin/media/json-upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        
+        const data = await res.json();
+        
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to upload JSON");
+        }
+        successCount++;
+      } catch (err: any) {
+        console.error("Upload error:", err);
+        failCount++;
+      }
+    }
+
+    if (failCount > 0) {
+      toast.error(`Hoàn tất: Thành công ${successCount}, Lỗi ${failCount}`, { id: toastId });
+    } else {
+      toast.success(`Upload thành công ${successCount} video!`, { id: toastId });
+    }
+    
+    fetchAssets();
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    setJsonUploading(false);
+  };
 
   const fetchPlaylists = async () => {
     try {
@@ -309,11 +378,15 @@ export default function AdminLibraryPage() {
     if (list.length === 1 && (list[0].includes('playlist?list=') || (list[0].includes('watch?') && list[0].includes('&list=')))) {
       try {
         setUploadLogs(prev => [...prev, { msg: `Phát hiện Playlist, đang lấy danh sách video...`, type: "info" }]);
-        const res = await fetch(`/api/youtube/playlist?url=${encodeURIComponent(list[0])}`);
+        const res = await fetch(`/api/youtube/playlist`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: list[0] })
+        });
         const data = await res.json();
         if (data.videos && data.videos.length > 0) {
           list = data.videos.map((v: any) => v.url);
-          setUploadLogs(prev => [...prev, { msg: `Đã tìm thấy ${list.length} video trong Playlist "${data.title}"`, type: "success" }]);
+          setUploadLogs(prev => [...prev, { msg: `Đã lấy thành công ${list.length} video từ Playlist`, type: "success" }]);
         } else {
           throw new Error("Không tìm thấy video nào");
         }
@@ -375,6 +448,34 @@ export default function AdminLibraryPage() {
     }
   };
 
+  const handleBulkAction = async (action: "publish" | "draft" | "delete") => {
+    if (selectedAssets.length === 0) return;
+    const toastId = toast.loading(`Đang xử lý ${selectedAssets.length} video...`);
+    let count = 0;
+    try {
+      for (const id of selectedAssets) {
+        if (action === "publish") {
+          await supabase.from("media_assets").update({ publish_status: "published", is_public: true }).eq("id", id);
+          setVocabAssets(prev => prev.map(a => a.id === id ? { ...a, publish_status: "published", is_public: true } : a));
+          setShadowAssets(prev => prev.map(a => a.id === id ? { ...a, publish_status: "published", is_public: true } : a));
+        } else if (action === "draft") {
+          await supabase.from("media_assets").update({ publish_status: "draft", is_public: false }).eq("id", id);
+          setVocabAssets(prev => prev.map(a => a.id === id ? { ...a, publish_status: "draft", is_public: false } : a));
+          setShadowAssets(prev => prev.map(a => a.id === id ? { ...a, publish_status: "draft", is_public: false } : a));
+        } else if (action === "delete") {
+          await fetch(`/api/admin/media/${id}`, { method: "DELETE" });
+          setVocabAssets(prev => prev.filter(a => a.id !== id));
+          setShadowAssets(prev => prev.filter(a => a.id !== id));
+        }
+        count++;
+      }
+      toast.success(`Đã xử lý ${count} video`, { id: toastId });
+      setSelectedAssets([]);
+    } catch (err: any) {
+      toast.error(err.message || "Có lỗi xảy ra", { id: toastId });
+    }
+  };
+
   const handleDeleteMedia = async () => {
     if (!deleteConfirmMedia) return;
     const id = deleteConfirmMedia;
@@ -427,8 +528,26 @@ export default function AdminLibraryPage() {
             <h3 className="font-bold text-white mb-2">Xóa video này?</h3>
             <p className="text-xs text-neutral-400 mb-4">Video sẽ bị xóa khỏi hệ thống. Không thể hoàn tác.</p>
             <div className="flex gap-2">
-              <button onClick={() => setDeleteConfirmMedia(null)} className="flex-1 px-4 py-2 rounded-xl bg-neutral-800 text-neutral-300 text-sm">Hủy</button>
-              <button onClick={handleDeleteMedia} className="flex-1 px-4 py-2 rounded-xl bg-red-500 text-white text-sm hover:bg-red-600">Xóa</button>
+              <button onClick={() => setDeleteConfirmMedia(null)} className="flex-1 px-4 py-2 rounded-xl bg-neutral-800 text-neutral-300 text-sm hover:bg-neutral-700 transition-colors">Hủy</button>
+              <button onClick={handleDeleteMedia} className="flex-1 px-4 py-2 rounded-xl bg-red-500/10 text-red-400 text-sm font-medium hover:bg-red-500/20 border border-red-500/20 transition-colors">
+                Xóa ngay
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Delete confirm */}
+      {deleteConfirmBulk && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setDeleteConfirmBulk(false)}>
+          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+            <h3 className="font-bold text-white mb-2 flex items-center gap-2"><Trash2 className="w-4 h-4 text-red-400" /> Xóa {selectedAssets.length} video?</h3>
+            <p className="text-xs text-neutral-400 mb-4">Bạn sắp xóa vĩnh viễn {selectedAssets.length} video đã chọn. Hành động này không thể hoàn tác.</p>
+            <div className="flex gap-2">
+              <button onClick={() => setDeleteConfirmBulk(false)} className="flex-1 px-4 py-2 rounded-xl bg-neutral-800 text-neutral-300 text-sm hover:bg-neutral-700 transition-colors">Hủy</button>
+              <button onClick={() => { handleBulkAction("delete"); setDeleteConfirmBulk(false); }} className="flex-1 px-4 py-2 rounded-xl bg-red-500/10 text-red-400 text-sm font-medium hover:bg-red-500/20 border border-red-500/20 transition-colors">
+                Xóa ngay
+              </button>
             </div>
           </div>
         </div>
@@ -485,6 +604,38 @@ export default function AdminLibraryPage() {
       {/* ── Tab: Vocabulary / Shadowing ── */}
       {(activeTab === "vocabulary" || activeTab === "shadowing") && (
         <div className="space-y-4">
+          {/* Bulk Action Bar (if items selected) */}
+          {selectedAssets.length > 0 && (
+            <div className="flex items-center justify-between bg-indigo-500/10 border border-indigo-500/20 rounded-xl px-4 py-3 animate-in fade-in slide-in-from-top-4 duration-200">
+              <div className="flex items-center gap-3">
+                <input 
+                  type="checkbox" 
+                  checked={selectedAssets.length === currentAssets.length && currentAssets.length > 0}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedAssets(currentAssets.map(a => a.id));
+                    } else {
+                      setSelectedAssets([]);
+                    }
+                  }}
+                  className="w-4 h-4 rounded border-indigo-500 bg-neutral-900 text-indigo-500 focus:ring-indigo-500 cursor-pointer accent-indigo-500"
+                />
+                <span className="text-sm font-medium text-indigo-400">Đã chọn {selectedAssets.length} video</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => handleBulkAction("publish")} className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5">
+                  <Eye className="w-3.5 h-3.5" /> Publish
+                </button>
+                <button onClick={() => handleBulkAction("draft")} className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5">
+                  <EyeOff className="w-3.5 h-3.5" /> Draft
+                </button>
+                <button onClick={() => setDeleteConfirmBulk(true)} className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5">
+                  <Trash2 className="w-3.5 h-3.5" /> Xóa
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Filter bar */}
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2 flex-1 min-w-[200px] px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-xl">
@@ -510,7 +661,7 @@ export default function AdminLibraryPage() {
           </div>
 
           {/* Video list */}
-          <div className="rounded-xl border border-neutral-800/60 bg-[#0a0a0a]">
+          <div className="rounded-xl border border-neutral-800/60 bg-[#0a0a0a] overflow-hidden shadow-xl shadow-black/40">
             {loadingAssets ? (
               <div className="py-16 text-center text-neutral-600 text-sm">Đang tải...</div>
             ) : currentAssets.length === 0 ? (
@@ -522,9 +673,41 @@ export default function AdminLibraryPage() {
                 </button>
               </div>
             ) : (
-              currentAssets.map(asset => (
-                <VideoRow key={asset.id} asset={asset} playlists={playlists} onAction={handleAssetAction} />
-              ))
+              <div className="overflow-auto max-h-[70vh]">
+                <div className="px-4 py-3 bg-neutral-900/90 backdrop-blur-md border-b border-neutral-800/60 flex items-center gap-4 sticky top-0 z-10 shadow-sm shadow-black/20">
+                  <div className="shrink-0 flex items-center justify-center">
+                    <input 
+                      type="checkbox" 
+                      checked={selectedAssets.length === currentAssets.length && currentAssets.length > 0}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedAssets(currentAssets.map(a => a.id));
+                        } else {
+                          setSelectedAssets([]);
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-neutral-700 bg-neutral-900 text-indigo-500 focus:ring-indigo-500 cursor-pointer accent-indigo-500"
+                    />
+                  </div>
+                  <span className="text-xs text-neutral-500 uppercase tracking-wider font-semibold">Chọn tất cả</span>
+                </div>
+                <div className="divide-y divide-neutral-800/60">
+                  {currentAssets.map(asset => (
+                    <VideoRow 
+                      key={asset.id} 
+                      asset={asset} 
+                      playlists={playlists} 
+                      onAction={handleAssetAction} 
+                      isSelected={selectedAssets.includes(asset.id)}
+                      onToggleSelect={(id) => {
+                        setSelectedAssets(prev => 
+                          prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+                        );
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -599,6 +782,42 @@ export default function AdminLibraryPage() {
                 </div>
               )}
             </div>
+
+            <div className="px-5 py-3.5 border-t border-neutral-800/60 border-b border-neutral-800/60 bg-neutral-900/30 flex items-center gap-2 mt-4">
+              <FileJson className="w-4 h-4 text-emerald-400" />
+              <h3 className="text-xs font-semibold text-neutral-300 uppercase tracking-wider">Upload JSON (Shadowing Processed Data)</h3>
+            </div>
+            <div className="p-5">
+              <div className="mb-4">
+                <label className="text-xs text-neutral-400 mb-1.5 block">Chọn Playlist (tùy chọn)</label>
+                <select value={jsonPlaylistId} onChange={e => setJsonPlaylistId(e.target.value)} disabled={jsonUploading}
+                  className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 focus:border-indigo-500 rounded-xl text-xs text-white outline-none">
+                  <option value="">-- Video lẻ --</option>
+                  {playlists.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
+                </select>
+              </div>
+              <div className="border-2 border-dashed border-neutral-800 rounded-xl p-8 flex flex-col items-center justify-center text-center bg-neutral-900/20 hover:bg-neutral-900/40 transition-colors">
+                <FileJson className="w-10 h-10 text-neutral-500 mb-3" />
+                <p className="text-sm font-medium text-neutral-300 mb-1">Kéo thả file JSON hoặc click để chọn file (Hỗ trợ upload hàng loạt)</p>
+                <p className="text-xs text-neutral-500 mb-4 max-w-sm">File JSON cần có cấu trúc: title, video_id, language, segments (start, end, text, pronunciation.value, words)</p>
+                <input 
+                  type="file" 
+                  accept=".json" 
+                  multiple
+                  className="hidden" 
+                  ref={fileInputRef}
+                  onChange={handleJsonUpload}
+                  disabled={jsonUploading}
+                />
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={jsonUploading}
+                  className="px-6 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  {jsonUploading ? "Đang xử lý..." : "Chọn các file JSON"}
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Info panel */}
@@ -643,17 +862,35 @@ export default function AdminLibraryPage() {
               if (!newTitle) return;
               const toastId = toast.loading("Đang tạo...");
               try {
-                await createPlaylist(newTitle, "");
+                const pl = await createPlaylist(newTitle, "");
+                // set language after creation
+                if (pl?.id) {
+                  await supabase.from("playlists").update({ language: newLanguage }).eq("id", pl.id);
+                }
                 setNewTitle("");
+                setNewLanguage("English");
                 fetchPlaylists();
                 toast.success("Đã tạo playlist", { id: toastId });
               } catch { toast.error("Lỗi tạo playlist", { id: toastId }); }
-            }} className="flex gap-2">
-              <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Tên playlist mới..."
-                className="flex-1 px-3 py-2 bg-neutral-900 border border-neutral-800 focus:border-indigo-500 rounded-xl text-sm text-white outline-none" />
-              <button type="submit" className="flex items-center gap-1.5 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium rounded-xl transition-all">
-                <Plus className="w-4 h-4" /> Tạo
-              </button>
+            }} className="space-y-2">
+              <div className="flex gap-2">
+                <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Tên playlist mới..."
+                  className="flex-1 px-3 py-2 bg-neutral-900 border border-neutral-800 focus:border-indigo-500 rounded-xl text-sm text-white outline-none" />
+                <select value={newLanguage} onChange={e => setNewLanguage(e.target.value)}
+                  className="px-3 py-2 bg-neutral-900 border border-neutral-800 focus:border-indigo-500 rounded-xl text-sm text-neutral-300 outline-none">
+                  <option value="English">🇺🇸 Tiếng Anh</option>
+                  <option value="Chinese">🇨🇳 Tiếng Trung</option>
+                  <option value="Japanese">🇯🇵 Tiếng Nhật</option>
+                  <option value="Korean">🇰🇷 Tiếng Hàn</option>
+                  <option value="French">🇫🇷 Tiếng Pháp</option>
+                  <option value="Spanish">🇪🇸 Tiếng Tây Ban Nha</option>
+                  <option value="German">🇩🇪 Tiếng Đức</option>
+                  <option value="Other">🌐 Khác</option>
+                </select>
+                <button type="submit" className="flex items-center gap-1.5 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium rounded-xl transition-all">
+                  <Plus className="w-4 h-4" /> Tạo
+                </button>
+              </div>
             </form>
 
             {/* Playlist list */}
@@ -665,13 +902,55 @@ export default function AdminLibraryPage() {
               <div className="divide-y divide-neutral-800/60">
                 {playlists.map(p => (
                   <div key={p.id} className="flex items-center justify-between py-3">
-                    <div>
-                      <p className="text-sm font-medium text-neutral-200">{p.title}</p>
-                      <p className="text-xs text-neutral-600">{new Date(p.created_at).toLocaleDateString("vi-VN")}</p>
+                    <div className="flex items-center gap-3">
+                      {p.thumbnail_url && (
+                        <img src={p.thumbnail_url} alt={p.title} className="w-12 h-8 object-cover rounded-lg" />
+                      )}
+                      <div>
+                        <input
+                          defaultValue={p.title}
+                          onBlur={async (e) => {
+                            const newTitle = e.target.value.trim();
+                            if (!newTitle || newTitle === p.title) return;
+                            const toastId = toast.loading("Đang lưu...");
+                            try {
+                              await supabase.from("playlists").update({ title: newTitle }).eq("id", p.id);
+                              setPlaylists(prev => prev.map(pl => pl.id === p.id ? { ...pl, title: newTitle } : pl));
+                              toast.success("Đã đổi tên", { id: toastId });
+                            } catch { toast.error("Lỗi", { id: toastId }); }
+                          }}
+                          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                          className="text-sm font-medium text-neutral-200 bg-transparent border-b border-transparent hover:border-neutral-700 focus:border-indigo-500 focus:outline-none w-full transition-colors"
+                        />
+                        <p className="text-xs text-neutral-600">{new Date(p.created_at).toLocaleDateString("vi-VN")}</p>
+                      </div>
                     </div>
-                    <button onClick={() => setDeleteConfirmPlaylist(p.id)} className="p-2 rounded-lg text-neutral-600 hover:text-red-400 hover:bg-red-500/10 transition-all">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={p.language || "English"}
+                        onChange={async (e) => {
+                          const toastId = toast.loading("Đang cập nhật...");
+                          try {
+                            await supabase.from("playlists").update({ language: e.target.value }).eq("id", p.id);
+                            setPlaylists(prev => prev.map(pl => pl.id === p.id ? { ...pl, language: e.target.value } : pl));
+                            toast.success("Đã cập nhật", { id: toastId });
+                          } catch { toast.error("Lỗi", { id: toastId }); }
+                        }}
+                        className="px-2 py-1 bg-neutral-900 border border-neutral-800 rounded-lg text-xs text-neutral-400 outline-none cursor-pointer"
+                      >
+                        <option value="English">🇺🇸 Tiếng Anh</option>
+                        <option value="Chinese">🇨🇳 Tiếng Trung</option>
+                        <option value="Japanese">🇯🇵 Tiếng Nhật</option>
+                        <option value="Korean">🇰🇷 Tiếng Hàn</option>
+                        <option value="French">🇫🇷 Tiếng Pháp</option>
+                        <option value="Spanish">🇪🇸 Tiếng Tây Ban Nha</option>
+                        <option value="German">🇩🇪 Tiếng Đức</option>
+                        <option value="Other">🌐 Khác</option>
+                      </select>
+                      <button onClick={() => setDeleteConfirmPlaylist(p.id)} className="p-2 rounded-lg text-neutral-600 hover:text-red-400 hover:bg-red-500/10 transition-all">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

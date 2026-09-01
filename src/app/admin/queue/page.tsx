@@ -107,9 +107,9 @@ export default function AdminQueuePage() {
             />
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[70vh]">
           <table className="w-full text-left text-sm text-neutral-400">
-            <thead className="text-xs text-neutral-500 bg-neutral-900/20 uppercase tracking-wider">
+            <thead className="text-xs text-neutral-500 bg-neutral-900/90 backdrop-blur-md uppercase tracking-wider sticky top-0 z-10 shadow-sm shadow-black/20">
               <tr>
                 <th className="px-5 py-3 font-medium">Mã Job</th>
                 <th className="px-5 py-3 font-medium">Loại Task</th>

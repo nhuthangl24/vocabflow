@@ -6,7 +6,7 @@ import {
   LayoutDashboard, LineChart, Activity, 
   Zap, Server, ListTree, 
   Users, CreditCard, Receipt, DollarSign,
-  Film, Headphones, Type, StickyNote, BrainCircuit,
+  Film, Headphones, Type, StickyNote, BrainCircuit, Flag,
   TerminalSquare, HeartPulse, Bell, ToggleRight, Settings, Search, CheckSquare, Database
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -44,6 +44,7 @@ const NAV_GROUPS = [
     label: "Công cụ Nội dung",
     items: [
       { name: "Thư viện Media", href: "/admin/library", icon: Film },
+      { name: "Báo lỗi Phụ đề", href: "/admin/reports", icon: Flag },
       { name: "Bóng âm", href: "/admin/shadowing", icon: Headphones },
       { name: "Từ vựng", href: "/admin/vocabulary", icon: Type },
       { name: "Ngữ pháp", href: "/admin/grammar", icon: StickyNote },
