@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Sparkles, LayoutDashboard, Library, BookOpen, LineChart, Settings, Zap, Lock } from "lucide-react";
+import { Menu, X, Sparkles, LayoutDashboard, Library, BookOpen, LineChart, Settings, Zap, Lock, Layers, Headphones, CreditCard } from "lucide-react";
 import UserMenuClient from "./UserMenuClient";
 import NotificationBell from "./NotificationBell";
 import { PlanFeatures } from "@/lib/plans";
@@ -17,6 +17,9 @@ export default function MobileHeader({ user, planFeatures }: { user: any, planFe
     { name: "Thống kê", href: user ? "/analytics" : "/login", icon: LineChart },
     { name: "Kho Video", href: user ? "/library" : "/login", icon: Library, locked: planFeatures && !planFeatures.enable_library },
     { name: "Kho Từ vựng", href: user ? "/vocabulary" : "/login", icon: BookOpen, locked: planFeatures && !planFeatures.enable_vocabulary },
+    { name: "Flashcards", href: user ? "/flashcards" : "/login", icon: Layers, locked: planFeatures && !planFeatures.enable_flashcards },
+    { name: "Shadowing", href: user ? "/shadowing" : "/login", icon: Headphones, locked: planFeatures && !planFeatures.enable_shadowing },
+    { name: "Gói cước", href: user ? "/pricing" : "/login", icon: CreditCard },
     { name: "Cài đặt", href: user ? "/settings" : "/login", icon: Settings },
   ];
 
@@ -90,44 +93,6 @@ export default function MobileHeader({ user, planFeatures }: { user: any, planFe
               );
             })}
           </div>
-            
-            {/* Upgrade CTA */}
-            <div className="p-4 shrink-0">
-              {planFeatures?.name === 'PRO' || planFeatures?.name === 'LIFETIME' ? (
-                <div className="bg-gradient-to-b from-indigo-50 to-blue-50 dark:from-indigo-500/10 dark:to-blue-500/10 border border-indigo-200 dark:border-indigo-500/20 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Sparkles className="w-5 h-5 text-indigo-500 dark:text-indigo-400 fill-indigo-500 dark:fill-indigo-400" />
-                    <span className="text-sm font-bold text-indigo-900 dark:text-indigo-100">Gói Pro Kích Hoạt</span>
-                  </div>
-                  <p className="text-xs text-indigo-700/80 font-medium mb-3 leading-relaxed dark:text-indigo-200/80">Bạn đang sở hữu mọi tính năng AI cao cấp nhất.</p>
-                  <Link href="/pricing" onClick={() => setIsOpen(false)} className="block w-full text-center px-4 py-2.5 bg-white dark:bg-indigo-500/20 border border-indigo-100 dark:border-indigo-500/30 text-xs font-bold text-indigo-700 dark:text-indigo-100 rounded-lg shadow-sm active:bg-indigo-50 dark:active:bg-indigo-500/30 transition-colors">
-                    Xem chi tiết
-                  </Link>
-                </div>
-              ) : planFeatures?.name === 'BASIC' ? (
-                <div className="bg-gradient-to-b from-emerald-50 to-teal-50 dark:from-emerald-500/10 dark:to-teal-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Sparkles className="w-5 h-5 text-emerald-500 dark:text-emerald-400 fill-emerald-500 dark:fill-emerald-400" />
-                    <span className="text-sm font-bold text-emerald-900 dark:text-emerald-100">Gói Basic Kích Hoạt</span>
-                  </div>
-                  <p className="text-xs text-emerald-700/80 font-medium mb-3 leading-relaxed dark:text-emerald-200/80">Nâng cấp Pro để mở khóa không giới hạn.</p>
-                  <Link href="/pricing" onClick={() => setIsOpen(false)} className="block w-full text-center px-4 py-2.5 bg-white dark:bg-emerald-500/20 border border-emerald-100 dark:border-emerald-500/30 text-xs font-bold text-emerald-700 dark:text-emerald-100 rounded-lg shadow-sm active:bg-emerald-50 dark:active:bg-emerald-500/30 transition-colors">
-                    Nâng cấp Pro
-                  </Link>
-                </div>
-              ) : (
-                <div className="bg-gradient-to-b from-amber-50 to-amber-100/50 border border-amber-200/50 rounded-2xl p-5">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Zap className="w-5 h-5 text-amber-500 fill-amber-500" />
-                    <span className="text-sm font-bold text-amber-900">Nâng cấp tài khoản</span>
-                  </div>
-                  <p className="text-xs text-amber-700/80 font-medium mb-4 leading-relaxed">Mở khóa tính năng dịch AI và lưu từ vựng không giới hạn.</p>
-                  <Link href="/pricing" onClick={() => setIsOpen(false)} className="block w-full text-center px-4 py-2.5 bg-white border border-amber-200 text-xs font-bold text-amber-700 rounded-xl shadow-sm active:bg-amber-50 transition-colors">
-                    Xem bảng giá
-                  </Link>
-                </div>
-              )}
-            </div>
 
             {/* Profile */}
             <div className="p-4 border-t border-slate-100 shrink-0 mb-safe dark:border-neutral-800">

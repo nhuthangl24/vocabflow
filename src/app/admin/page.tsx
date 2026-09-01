@@ -33,11 +33,26 @@ export default async function AdminOverviewPage() {
     adminClient.from("vocabulary_items").select("*", { count: 'exact', head: true }).gte('created_at', startOfDay),
     adminClient.from("grammar_items").select("*", { count: 'exact', head: true }).gte('created_at', startOfDay),
     adminClient.from("tasks").select("*", { count: 'exact', head: true }).eq('status', 'pending'),
-    adminClient.from("tasks").select("*", { count: 'exact', head: true }).eq('status', 'failed')
+    adminClient.from("tasks").select("*", { count: 'exact', head: true }).eq('status', 'failed'),
+    adminClient.from("ai_api_logs").select("cost").gte('created_at', startOfDay),
+    adminClient.from("system_services").select("*").order('type', { ascending: true })
   ]);
 
   const todayRevenue = orders?.reduce((acc, curr) => acc + (curr.amount || 0), 0) || 0;
-  const todayCost = (aiReqs || 0) * 0.002; // Roughly $0.002 avg per request
+  
+  // Real Cost Calculation
+  const aiLogsData = await adminClient.from("ai_api_logs").select("cost").gte('created_at', startOfDay);
+  const todayCost = aiLogsData.data?.reduce((acc, curr) => acc + (curr.cost || 0), 0) || 0;
+
+  // Real System Services
+  const { data: services } = await adminClient.from("system_services").select("*").order('type', { ascending: true });
+  const dbService = services?.find(s => s.name.toLowerCase().includes('database') || s.type === 'database');
+  const appService = services?.find(s => s.name.toLowerCase().includes('app') || s.type === 'backend');
+  const storageService = services?.find(s => s.name.toLowerCase().includes('storage') || s.type === 'storage');
+  const edgeService = services?.find(s => s.name.toLowerCase().includes('edge') || s.type === 'webhook');
+
+  const kiraProvider = services?.find(s => s.name.toLowerCase().includes('kira') || s.type === 'ai_provider');
+  const hhtechProvider = services?.find(s => s.name.toLowerCase().includes('hhtech') || s.type === 'ai_provider');
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
@@ -79,10 +94,10 @@ export default async function AdminOverviewPage() {
             <h3 className="text-sm font-medium text-neutral-300 flex items-center gap-2"><HeartPulse className="w-4 h-4 text-emerald-500"/> Trạng Thái Nền Tảng</h3>
           </div>
           <div className="p-5 space-y-4">
-            <HealthItem label="Database (PostgreSQL)" status="Bình thường" isNeutral />
-            <HealthItem label="Next.js App Server" status="Bình thường" isNeutral />
-            <HealthItem label="Supabase Storage" status="Bình thường" isNeutral />
-            <HealthItem label="Edge Functions" status="Bình thường" isNeutral />
+            <HealthItem label="Database (PostgreSQL)" status={dbService?.status === 'operational' ? "Bình thường" : "Cảnh báo"} isWarning={dbService?.status !== 'operational'} isNeutral={dbService?.status === 'operational'} />
+            <HealthItem label="Next.js App Server" status={appService?.status === 'operational' ? "Bình thường" : "Cảnh báo"} isWarning={appService?.status !== 'operational'} isNeutral={appService?.status === 'operational'} />
+            <HealthItem label="Supabase Storage" status={storageService?.status === 'operational' ? "Bình thường" : "Cảnh báo"} isWarning={storageService?.status !== 'operational'} isNeutral={storageService?.status === 'operational'} />
+            <HealthItem label="Edge Functions" status={edgeService?.status === 'operational' ? "Bình thường" : "Cảnh báo"} isWarning={edgeService?.status !== 'operational'} isNeutral={edgeService?.status === 'operational'} />
           </div>
         </div>
 
@@ -105,8 +120,8 @@ export default async function AdminOverviewPage() {
             <Link href="/admin/providers" className="text-xs text-indigo-400 hover:text-indigo-300">Phân Tích →</Link>
           </div>
           <div className="p-5 space-y-4">
-            <HealthItem label="KiraAI Engine" status="Bình thường" isNeutral />
-            <HealthItem label="HHTECH API" status="Bình thường" isNeutral />
+            <HealthItem label="KiraAI Engine" status={kiraProvider?.status === 'operational' ? "Bình thường" : "Cảnh báo"} isWarning={kiraProvider?.status !== 'operational'} isNeutral={kiraProvider?.status === 'operational'} />
+            <HealthItem label="HHTECH API" status={hhtechProvider?.status === 'operational' ? "Bình thường" : "Cảnh báo"} isWarning={hhtechProvider?.status !== 'operational'} isNeutral={hhtechProvider?.status === 'operational'} />
           </div>
         </div>
 

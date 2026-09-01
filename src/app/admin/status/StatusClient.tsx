@@ -31,7 +31,7 @@ export function StatusClient({ initialServices, activeIncidents, uptime24h }: Pr
         
         // Mock new log entry
         setLogs(prev => [{
-          id: Math.random().toString(),
+          id: crypto.randomUUID(),
           level: 'info',
           service: 'health-checker',
           message: 'Performed automated system sweep',
@@ -212,16 +212,7 @@ export function StatusClient({ initialServices, activeIncidents, uptime24h }: Pr
               );
             })()}
           </div>
-          <div className="rounded-xl border border-neutral-800 bg-[#0a0a0a] p-6">
-             <h3 className="text-white font-semibold mb-4">Worker Status (Mock Dashboard)</h3>
-             <div className="flex gap-4 items-center p-4 bg-neutral-900/50 rounded border border-neutral-800">
-               <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
-               <div>
-                 <div className="text-sm font-medium text-white">FFmpeg Processor 1</div>
-                 <div className="text-xs text-neutral-500">Processing video_123.mp4 • 45% CPU</div>
-               </div>
-             </div>
-          </div>
+          {/* Mock Worker dashboard removed - Real data is in the Queue tab */}
         </div>
       )}
 
@@ -229,10 +220,8 @@ export function StatusClient({ initialServices, activeIncidents, uptime24h }: Pr
       {activeTab === 'db' && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <MetricCard label="Active Connections" value="12/100" icon={Database} color="text-emerald-400" />
-            <MetricCard label="Idle Connections" value="4" icon={Clock} color="text-neutral-400" />
-            <MetricCard label="Slow Queries" value="0" icon={AlertTriangle} color="text-amber-400" />
             <MetricCard label="DB Latency" value={`${healthData?.services?.find((s:any)=>s.type==='database')?.latency_ms || 0}ms`} icon={Activity} color="text-indigo-400" />
+            <MetricCard label="Status" value={healthData?.services?.find((s:any)=>s.type==='database')?.status || "N/A"} icon={CheckCircle2} color="text-emerald-400" />
           </div>
         </div>
       )}

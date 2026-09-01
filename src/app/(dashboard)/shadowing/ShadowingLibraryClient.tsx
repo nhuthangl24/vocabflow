@@ -64,7 +64,7 @@ export default function ShadowingLibraryClient({
       const supabase = createClient();
       await supabase
         .from("media_assets")
-        .update({ status: "deleted" })
+        .delete()
         .eq("id", assetId);
       
       setAssets(prev => prev.filter(a => a.id !== assetId));

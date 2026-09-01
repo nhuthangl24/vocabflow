@@ -17,7 +17,7 @@ export default function UserMenuClient({ user, isCollapsed, planFeatures }: User
   const [isOpen, setIsOpen] = useState(false);
   const [localUser, setLocalUser] = useState(user);
   const planName = planFeatures?.name?.toUpperCase() || '';
-  const isPro = planName && !['FREE', 'BASIC'].includes(planName);
+  const isPro = planName && planName !== 'FREE';
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const supabase = createClient();

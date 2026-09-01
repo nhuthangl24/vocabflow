@@ -27,10 +27,10 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Soft delete by setting status to 'deleted'
+    // Hard delete
     const { error } = await supabase
       .from("media_assets")
-      .update({ status: "deleted" })
+      .delete()
       .eq("id", id)
       .eq("user_id", user.id);
 
