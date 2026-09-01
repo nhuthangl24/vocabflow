@@ -13,6 +13,7 @@ export type PlanFeatures = {
   
   daily_video_limit: number;
   max_video_duration_minutes: number;
+  max_shadowing_minutes: number;
   max_vocabulary_per_video: number;
   monthly_shadowing_limit: number;
   max_ai_calls_per_month: number;
@@ -36,6 +37,7 @@ export const DEFAULT_FREE_PLAN: PlanFeatures = {
   
   daily_video_limit: 2,
   max_video_duration_minutes: 25,
+  max_shadowing_minutes: 30,
   max_vocabulary_per_video: 25,
   monthly_shadowing_limit: 0,
   max_ai_calls_per_month: 0,
@@ -64,6 +66,7 @@ export async function getUserPlanFeatures(user: any): Promise<PlanFeatures> {
       
       daily_video_limit: 999999,
       max_video_duration_minutes: 999999,
+      max_shadowing_minutes: 999999,
       max_vocabulary_per_video: 999999,
       monthly_shadowing_limit: 999999,
       max_ai_calls_per_month: 999999,
@@ -102,6 +105,7 @@ export async function getUserPlanFeatures(user: any): Promise<PlanFeatures> {
     
     daily_video_limit: planData.daily_video_limit === 0 ? 999999 : (planData.daily_video_limit ?? DEFAULT_FREE_PLAN.daily_video_limit),
     max_video_duration_minutes: planData.max_video_duration_minutes === 0 ? 999999 : (planData.max_video_duration_minutes ?? DEFAULT_FREE_PLAN.max_video_duration_minutes),
+    max_shadowing_minutes: planData.max_shadowing_minutes === 0 ? 999999 : (planData.max_shadowing_minutes ?? DEFAULT_FREE_PLAN.max_shadowing_minutes),
     max_vocabulary_per_video: planData.max_vocabulary_per_video === 0 ? 999999 : (planData.max_vocabulary_per_video ?? DEFAULT_FREE_PLAN.max_vocabulary_per_video),
     monthly_shadowing_limit: planData.monthly_shadowing_limit === 0 ? 999999 : (planData.monthly_shadowing_limit ?? 0),
     max_ai_calls_per_month: planData.max_ai_calls_per_month === 0 ? 999999 : (planData.max_ai_calls_per_month ?? 0),

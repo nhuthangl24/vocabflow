@@ -77,10 +77,16 @@ async function processJob(jobId: string) {
         // Map targetLanguage to ISO code for CC fetching
         let langCode = 'en';
         const tLang = job.settings?.targetLanguage?.toLowerCase() || '';
+        
+        if (tLang.startsWith('ai_')) {
+          throw new Error("User requested AI generation, skipping CC");
+        }
+
         if (tLang.includes('chinese') || tLang.includes('trung')) langCode = 'zh';
         else if (tLang.includes('japanese') || tLang.includes('nhật')) langCode = 'ja';
         else if (tLang.includes('korean') || tLang.includes('hàn')) langCode = 'ko';
         else if (tLang.includes('french') || tLang.includes('pháp')) langCode = 'fr';
+        else if (tLang.includes('vietnamese') || tLang.includes('việt')) langCode = 'vi';
         else if (tLang.includes('english') || tLang.includes('anh')) langCode = 'en';
         
         try {

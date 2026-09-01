@@ -116,8 +116,9 @@ export default function PlanForm({ plan, action, mode }: PlanFormProps) {
           <p className="text-xs text-neutral-600 mb-3">Nhập 0 = Không giới hạn</p>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             <NumberField label="Video xử lý / ngày" name="daily_video_limit" defaultValue={plan?.daily_video_limit ?? 0} />
-            <NumberField label="Thời lượng tối đa (phút)" name="max_video_duration_minutes" defaultValue={plan?.max_video_duration_minutes ?? 0} />
-            <NumberField label="Từ vựng tối đa / video" name="max_vocabulary_per_video" defaultValue={plan?.max_vocabulary_per_video ?? 0} />
+            <NumberField label="Thời lượng video Từ vựng (phút)" name="max_video_duration_minutes" defaultValue={plan?.max_video_duration_minutes ?? 0} />
+            <NumberField label="Thời lượng video Shadowing (phút)" name="max_shadowing_minutes" defaultValue={plan?.max_shadowing_minutes ?? 0} />
+            <NumberField label="Số từ vựng / video" name="max_vocabulary_per_video" defaultValue={plan?.max_vocabulary_per_video ?? 0} />
             <NumberField label="Lượt Shadowing / tháng" name="monthly_shadowing_limit" defaultValue={plan?.monthly_shadowing_limit ?? 0} />
             <NumberField label="AI calls / tháng" name="max_ai_calls_per_month" defaultValue={plan?.max_ai_calls_per_month ?? 0} />
             <NumberField label="Lưu trữ (GB)" name="max_storage_gb" defaultValue={plan?.max_storage_bytes ? Math.round(plan.max_storage_bytes / (1024 ** 3)) : 0} />

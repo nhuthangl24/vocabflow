@@ -24,6 +24,7 @@ type Plan = {
   features_list: string | null;
   daily_video_limit: number;
   max_video_duration_minutes: number;
+  max_shadowing_minutes: number;
   max_vocabulary_per_video: number;
   monthly_shadowing_limit: number;
   max_storage_bytes: number;
@@ -395,8 +396,9 @@ function PlanRow({
               <h4 className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 mb-3">Giới hạn</h4>
               <div className="space-y-2">
                 <LimitRow label="Video / ngày" value={fmtLimit(plan.daily_video_limit, " video")} />
-                <LimitRow label="Thời lượng tối đa" value={fmtLimit(plan.max_video_duration_minutes, " phút")} />
-                <LimitRow label="Từ vựng / video" value={fmtLimit(plan.max_vocabulary_per_video, " từ")} />
+                <LimitRow label="Video Từ vựng (phút)" value={fmtLimit(plan.max_video_duration_minutes, " phút")} />
+                <LimitRow label="Video Shadowing (phút)" value={fmtLimit(plan.max_shadowing_minutes, " phút")} />
+                <LimitRow label="Từ vựng/video" value={fmtLimit(plan.max_vocabulary_per_video, " từ")} />
                 <LimitRow label="Shadowing / tháng" value={fmtLimit(plan.monthly_shadowing_limit, " lượt")} />
                 <LimitRow label="AI calls / tháng" value={fmtLimit(plan.max_ai_calls_per_month, " lần")} />
                 <LimitRow label="Lưu trữ" value={fmtBytes(plan.max_storage_bytes)} />

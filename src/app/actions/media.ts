@@ -38,6 +38,7 @@ export async function createMediaJob(data: {
 
   let dailyLimit = planFeatures.daily_video_limit;
   let maxDurationMinutes = planFeatures.max_video_duration_minutes;
+  let maxShadowingMinutes = planFeatures.max_shadowing_minutes;
   let maxVocab = planFeatures.max_vocabulary_per_video;
 
   const adminEmails = process.env.ADMIN_EMAILS?.split(',') || [];
@@ -74,8 +75,10 @@ export async function createMediaJob(data: {
         const lengthMatch = html.match(/"lengthSeconds":"(\d+)"/);
         if (lengthMatch && !isAdmin) {
           const lengthSeconds = parseInt(lengthMatch[1]);
-          if (lengthSeconds > maxDurationMinutes * 60) {
-            throw new Error(`Video này dài ${Math.ceil(lengthSeconds / 60)} phút. Gói cước của bạn chỉ hỗ trợ tối đa ${maxDurationMinutes} phút/video. Hãy nâng cấp gói cước!`);
+          const currentMaxMinutes = isShadowingModule ? maxShadowingMinutes : maxDurationMinutes;
+          
+          if (lengthSeconds > currentMaxMinutes * 60) {
+            throw new Error(`Video này dài ${Math.ceil(lengthSeconds / 60)} phút. Gói cước của bạn chỉ hỗ trợ tối đa ${currentMaxMinutes} phút/video cho tính năng ${isShadowingModule ? 'Shadowing' : 'Từ vựng'}. Hãy nâng cấp gói cước!`);
           }
         }
 

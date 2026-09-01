@@ -1,6 +1,6 @@
 import { getProvider } from "./provider";
 
-const SYSTEM_PROMPT = `You are an expert subtitle editor for an English shadowing platform.
+const SYSTEM_PROMPT = `You are an expert subtitle editor for a language learning platform.
 The transcript has already been generated and is mostly correct.
 
 ==================================================

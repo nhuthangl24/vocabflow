@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { LogOut, Settings, User as UserIcon, Crown } from "lucide-react";
+import { LogOut, Settings, User as UserIcon, Crown, Zap } from "lucide-react";
 import Link from "next/link";
 import { PlanFeatures } from "@/lib/plans";
 
@@ -16,7 +16,8 @@ type UserMenuClientProps = {
 export default function UserMenuClient({ user, isCollapsed, planFeatures }: UserMenuClientProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [localUser, setLocalUser] = useState(user);
-  const isPro = planFeatures?.name === 'PRO' || planFeatures?.name === 'LIFETIME' || planFeatures?.name === 'ADMIN';
+  const planName = planFeatures?.name?.toUpperCase() || '';
+  const isPro = planName && !['FREE', 'BASIC'].includes(planName);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const supabase = createClient();
@@ -123,7 +124,7 @@ export default function UserMenuClient({ user, isCollapsed, planFeatures }: User
               className="flex items-center gap-2.5 px-4 py-2 text-sm font-medium text-amber-600 hover:bg-amber-50 hover:text-amber-700 transition-colors w-full text-left dark:text-amber-500 dark:hover:bg-amber-500/10 border-t border-slate-100 pt-2 mt-1 dark:border-neutral-800"
               onClick={() => setIsOpen(false)}
             >
-              <Crown className="w-4 h-4" />
+              <Zap className="w-4 h-4" />
               Quản lý gói cước
             </Link>
           

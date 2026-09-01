@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Sparkles, Zap, ChevronLeft, ChevronRight } from "lucide-react";
+
 import SidebarNav from "./SidebarNav";
 import UserMenuClient from "./UserMenuClient";
 import LuminaLogo from "../LuminaLogo";

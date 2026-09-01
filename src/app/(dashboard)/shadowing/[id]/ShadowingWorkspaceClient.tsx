@@ -49,7 +49,37 @@ function computeDiff(original: string, input: string) {
 
 const YOUTUBE_OPTS = { width: '100%', height: '100%', playerVars: { autoplay: 0, rel: 0 } };
 
-export default function ShadowingWorkspaceClient({ assetId, videoUrl, transcript = [] }: { assetId: string, videoUrl: string, transcript: any[] }) {
+export default function ShadowingWorkspaceClient({ assetId, videoUrl, transcript: rawTranscript = [] }: { assetId: string, videoUrl: string, transcript: any[] }) {
+  const transcript = useMemo(() => {
+    return rawTranscript.map((segment, index) => {
+      let text = segment.text || "";
+      text = text.replace(/\[.*?\]|\(.*?\)/g, '').trim();
+      text = text.replace(/\s+/g, ' ');
+
+      if (text.length > 0) {
+        const lastChar = text[text.length - 1];
+        const punctuationMarks = ['.', '!', '?', ',', ';', ':', '"', '”', '’', '\''];
+        
+        if (!punctuationMarks.includes(lastChar)) {
+          const nextSegment = rawTranscript[index + 1];
+          let nextText = nextSegment?.text?.replace(/\[.*?\]|\(.*?\)/g, '').trim() || "";
+          
+          if (nextText.length > 0) {
+            const firstChar = nextText[0];
+            const isUppercase = firstChar !== firstChar.toLowerCase() && firstChar === firstChar.toUpperCase();
+            
+            if (isUppercase) {
+              text += '.';
+            }
+          } else {
+            text += '.';
+          }
+        }
+      }
+      return { ...segment, text };
+    });
+  }, [rawTranscript]);
+
   const { trackEvent } = useAnalytics("ShadowingRoom");
   const [player, setPlayer] = useState<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -183,9 +213,15 @@ export default function ShadowingWorkspaceClient({ assetId, videoUrl, transcript
           if (activeTab === "dictation") {
             const targetSegment = transcript[dictationIndexRef.current];
             if (targetSegment) {
-              const endTime = targetSegment.end_time_ms / 1000 + 0.2;
+              // Dùng thời điểm bắt đầu của segment TIẾP THEO (nếu có) để ngắt
+              const nextSegment = transcript[dictationIndexRef.current + 1];
+              const endTime = nextSegment ? nextSegment.start_time_ms / 1000 : targetSegment.end_time_ms / 1000 + 0.2;
+              
               if (time >= endTime) {
                 player.pauseVideo();
+                const rewindTime = Math.max(0, endTime - 0.05);
+                player.seekTo(rewindTime, true);
+                setCurrentTime(rewindTime);
                 setIsPlaying(false);
               }
             }
@@ -201,9 +237,15 @@ export default function ShadowingWorkspaceClient({ assetId, videoUrl, transcript
         if (activeTab === "dictation") {
           const targetSegment = transcript[dictationIndexRef.current];
           if (targetSegment) {
-            const endTime = targetSegment.end_time_ms / 1000 + 0.2;
+            // Dùng thời điểm bắt đầu của segment TIẾP THEO (nếu có) để ngắt
+            const nextSegment = transcript[dictationIndexRef.current + 1];
+            const endTime = nextSegment ? nextSegment.start_time_ms / 1000 : targetSegment.end_time_ms / 1000 + 0.2;
+            
             if (time >= endTime) {
               videoRef.current!.pause();
+              const rewindTime = Math.max(0, endTime - 0.05);
+              videoRef.current!.currentTime = rewindTime;
+              setCurrentTime(rewindTime);
               setIsPlaying(false);
             }
           }
@@ -420,17 +462,23 @@ export default function ShadowingWorkspaceClient({ assetId, videoUrl, transcript
             <div className="mt-6 bg-white dark:bg-[#121212] rounded-3xl shadow-lg border border-slate-200 dark:border-neutral-800 p-6 flex flex-col items-center justify-center text-center relative overflow-hidden min-h-[140px] lg:min-h-[160px]" style={{ width: '100%' }}>
                {/* Render Words */}
                {(() => {
+                 let ipaTokens = [];
+                 if (currentSegment.ipa) {
+                   ipaTokens = currentSegment.ipa.replace(/^\/|\/$/g, '').trim().split(/\s+/);
+                 }
+
                  if (currentSegment.words && Array.isArray(currentSegment.words) && currentSegment.words.length > 0) {
                    return (
                      <div className="w-full text-center flex-1 flex flex-col justify-center">
+                       {currentSegment.ipa && ipaTokens.length !== currentSegment.words.length && (
+                         <div className="w-full max-w-[520px] mx-auto text-[15px] font-mono font-medium tracking-wide mb-3 text-indigo-500/80 dark:text-indigo-400/80">
+                           {currentSegment.ipa}
+                         </div>
+                       )}
                        <div className="w-full max-w-[520px] mx-auto flex flex-wrap justify-center items-end gap-y-6 gap-x-1">
                          {currentSegment.words.map((wordObj: any, idx: number) => {
                            const isActiveWord = currentTime >= wordObj.start && currentTime <= wordObj.end;
-                           const text = wordObj.text; // don't trim to preserve spacing if any, or trim for centered alignment
-                           let ipaTokens = [];
-                           if (currentSegment.ipa) {
-                             ipaTokens = currentSegment.ipa.replace(/^\/|\/$/g, '').trim().split(/\s+/);
-                           }
+                           const text = wordObj.text;
                            const ipaWord = ipaTokens.length === currentSegment.words.length ? ipaTokens[idx] : "";
 
                            return (
@@ -452,16 +500,17 @@ export default function ShadowingWorkspaceClient({ assetId, videoUrl, transcript
                  }
 
                  const textTokens = currentSegment.text.trim().split(/\s+/);
-                 let ipaTokens = [];
-                 if (currentSegment.ipa) {
-                    ipaTokens = currentSegment.ipa.replace(/^\/|\/$/g, '').trim().split(/\s+/);
-                 }
 
                  return (
                    <div className="w-full text-center flex-1 flex flex-col justify-center">
+                     {currentSegment.ipa && ipaTokens.length !== textTokens.length && (
+                       <div className="w-full max-w-[520px] mx-auto text-[15px] font-mono font-medium tracking-wide mb-3 text-indigo-500/80 dark:text-indigo-400/80">
+                         {currentSegment.ipa}
+                       </div>
+                     )}
                      <div className="leading-[2.75rem] lg:leading-[3.25rem] w-full max-w-[520px] mx-auto">
                        {textTokens.map((word: string, idx: number) => {
-                         const ipaWord = ipaTokens[idx] || "";
+                         const ipaWord = ipaTokens.length === textTokens.length ? ipaTokens[idx] : "";
 
                          return (
                            <span key={idx} className="inline-flex flex-col items-center mx-1.5 align-bottom">

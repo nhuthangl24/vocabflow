@@ -3,6 +3,7 @@ import MobileHeader from "@/components/layout/MobileHeader";
 import { createClient } from "@/lib/supabase/server";
 import PresenceProvider from "@/components/providers/PresenceProvider";
 import { getUserPlanFeatures } from "@/lib/plans";
+import NotificationBell from "@/components/layout/NotificationBell";
 
 export default async function DashboardLayout({
   children,
@@ -19,6 +20,14 @@ export default async function DashboardLayout({
       <Sidebar />
       <div className="flex-1 flex flex-col h-screen relative min-w-0">
         <MobileHeader user={user} planFeatures={planFeatures} />
+        
+        {/* Desktop Notification Bell */}
+        {user && (
+          <div className="hidden md:block absolute top-6 right-8 z-50">
+            <NotificationBell placement="bottom" />
+          </div>
+        )}
+
         <main className="flex-1 overflow-y-auto scrollbar-hide relative z-0">
           {children}
         </main>

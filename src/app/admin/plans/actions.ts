@@ -102,6 +102,7 @@ function extractPlanPayload(formData: FormData) {
     // Limits
     daily_video_limit: parseInt(formData.get("daily_video_limit") as string) || 0,
     max_video_duration_minutes: parseInt(formData.get("max_video_duration_minutes") as string) || 0,
+    max_shadowing_minutes: parseInt(formData.get("max_shadowing_minutes") as string) || 0,
     max_vocabulary_per_video: parseInt(formData.get("max_vocabulary_per_video") as string) || 0,
     monthly_shadowing_limit: parseInt(formData.get("monthly_shadowing_limit") as string) || 0,
     max_storage_bytes: (parseInt(formData.get("max_storage_gb") as string) || 0) * 1024 * 1024 * 1024,

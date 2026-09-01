@@ -222,17 +222,7 @@ export default function FlashcardsClient({ stats }: { stats: Stats }) {
         </div>
       </div>
 
-      <div className="flex justify-center my-8">
-        <Link 
-          href="/flashcards/study/all" 
-          className="group relative inline-flex items-center justify-center gap-3 px-8 py-4 text-lg font-bold text-white bg-indigo-600 rounded-full hover:bg-indigo-700 hover:scale-105 transition-all shadow-lg hover:shadow-indigo-500/25"
-        >
-          <PlayCircle className="w-6 h-6" />
-          <span>Bắt đầu ôn tập ({stats.due} thẻ)</span>
-        </Link>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
         <div className="lg:col-span-2 space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">

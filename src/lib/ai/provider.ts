@@ -166,7 +166,7 @@ export class OpenAICompatibleProvider implements AIProvider {
       });
 
       const usage = response.usage || { prompt_tokens: 0, completion_tokens: 0 };
-      const content = response.choices[0]?.message?.content;
+      const content = response.choices?.[0]?.message?.content;
       if (!content) throw new Error("No text content returned from LLM");
 
       if (tracking) {

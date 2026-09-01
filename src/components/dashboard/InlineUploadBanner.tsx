@@ -28,7 +28,7 @@ export default function InlineUploadBanner({
   const supabase = createClient();
   const [activeTab, setActiveTab] = useState<'youtube' | 'upload'>('youtube');
   const [youtubeUrl, setYoutubeUrl] = useState("");
-  const [targetLanguage, setTargetLanguage] = useState("English");
+  const [targetLanguage, setTargetLanguage] = useState("AI_English");
   const [targetCount, setTargetCount] = useState<number | "">(35);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -225,14 +225,6 @@ export default function InlineUploadBanner({
                   <LinkIcon className="w-3.5 h-3.5" />
                   YouTube Link
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('upload')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${activeTab === 'upload' ? 'bg-white dark:bg-neutral-900 text-indigo-600 dark:text-neutral-200 shadow-sm border border-slate-200 dark:border-neutral-700' : 'text-slate-500 hover:text-slate-700 dark:text-neutral-500 dark:hover:text-neutral-300'}`}
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  Tải lên Video/Audio
-                </button>
               </div>
               
               {/* Usage Count Display */}
@@ -292,16 +284,21 @@ export default function InlineUploadBanner({
                 >
                   {isFetchingCaptions ? (
                     <option>Đang tìm CC...</option>
-                  ) : availableCaptions && availableCaptions.length > 0 ? (
-                    availableCaptions.map((cap, idx) => (
-                      <option key={idx} value={cap.name}>{cap.name}</option>
-                    ))
                   ) : (
                     <>
-                      <option value="English">Tiếng Anh</option>
-                      <option value="Chinese">Tiếng Trung</option>
-                      <option value="Japanese">Tiếng Nhật</option>
-                      <option value="Korean">Tiếng Hàn</option>
+                      {availableCaptions && availableCaptions.length > 0 && (
+                        <optgroup label="Phụ đề có sẵn (YouTube)">
+                          {availableCaptions.map((cap, idx) => (
+                            <option key={`cc-${idx}`} value={cap.name}>{cap.name}</option>
+                          ))}
+                        </optgroup>
+                      )}
+                      <optgroup label="Tạo bằng AI (VocabFlow)">
+                        <option value="AI_English">Tiếng Anh (AI)</option>
+                        <option value="AI_Chinese">Tiếng Trung (AI)</option>
+                        <option value="AI_Japanese">Tiếng Nhật (AI)</option>
+                        <option value="AI_Korean">Tiếng Hàn (AI)</option>
+                      </optgroup>
                     </>
                   )}
                 </select>

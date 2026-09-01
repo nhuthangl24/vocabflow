@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import FlashcardsClient from "./FlashcardsClient";
-import { BrainCircuit } from "lucide-react";
+import { BrainCircuit, PlayCircle } from "lucide-react";
 
 export const metadata = {
   title: "Flashcards Dashboard | Lumina",
@@ -50,6 +51,15 @@ export default async function FlashcardsPage() {
             Hệ thống lặp lại ngắt quãng thế hệ mới.
           </p>
         </div>
+        {stats.due > 0 && (
+          <Link
+            href="/flashcards/study/all"
+            className="group flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all shadow-sm hover:shadow-md hover:shadow-indigo-500/20 active:scale-95 shrink-0"
+          >
+            <PlayCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            <span>Ôn tập ngay ({stats.due})</span>
+          </Link>
+        )}
       </div>
 
       <FlashcardsClient stats={stats} />

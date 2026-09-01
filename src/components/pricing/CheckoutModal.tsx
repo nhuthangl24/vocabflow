@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Loader2, Lock, CheckCircle2, Zap, Copy, AlertCircle, Clock, CreditCard } from "lucide-react";
 import { createOrderAction, expireOrderAction } from "@/app/actions/payment";
 import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 
 interface CheckoutModalProps {
   plan: any; 
@@ -226,6 +227,10 @@ export function CheckoutModal({ plan, isOpen, onClose, onSuccess }: CheckoutModa
 
               <button
                 onClick={() => {
+                  toast.success('Đã gửi yêu cầu! Vui lòng đợi Admin kiểm tra và nâng cấp nhé.', {
+                    duration: 5000,
+                    icon: '⏳'
+                  });
                   onSuccess();
                   onClose();
                 }}

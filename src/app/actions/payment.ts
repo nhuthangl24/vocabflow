@@ -107,6 +107,14 @@ export async function approveOrderAction(orderId: string) {
     description: 'Admin approved the bank transfer and upgraded the user.'
   });
 
+  // 4. Gửi thông báo cho user
+  await adminClient.from('notification_history').insert({
+    user_id: order.user_id,
+    title: 'Thanh toán thành công 🎉',
+    content: `Đơn hàng nâng cấp gói ${order.plan_id.toUpperCase()} của bạn đã được xác nhận. Chúc bạn học tập hiệu quả!`,
+    type: 'billing'
+  });
+
   if (userError) return { success: false, error: "Lỗi khi cấp quyền gói cước: " + userError.message };
 
   return { success: true };
@@ -124,6 +132,18 @@ export async function rejectOrderAction(orderId: string, reason?: string): Promi
       action_type: 'rejected',
       description: `Admin rejected the order. Reason: ${reason || 'None'}`
     });
+
+    // Lấy user_id của order để gửi thông báo
+    const { data: order } = await adminClient.from('orders').select('user_id, plan_id').eq('id', orderId).single();
+    if (order) {
+      await adminClient.from('notification_history').insert({
+        user_id: order.user_id,
+        title: 'Thanh toán bị từ chối ❌',
+        content: `Đơn hàng gói ${order.plan_id.toUpperCase()} của bạn đã bị từ chối.${reason ? ' Lý do: ' + reason : ' Vui lòng liên hệ hỗ trợ.'}`,
+        type: 'alert'
+      });
+    }
+
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err?.message || 'Unknown error' };

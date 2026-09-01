@@ -216,73 +216,7 @@ export default function AnalyticsClient({ stats }: { stats: Stats }) {
           </div>
         </div>
 
-        {/* Progress Category */}
-        <div className="bg-white dark:bg-[#0a0a0a] rounded-2xl border border-slate-200 dark:border-neutral-800 p-6 shadow-sm dark:border-neutral-700">
-          <div className="flex items-center gap-2 mb-6">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">Tiến độ theo chủ đề</h2>
-          </div>
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-6 dark:text-neutral-400">Phần đã học trên tổng nội dung</p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {/* Category: Từ vựng */}
-            <div className="bg-slate-50 dark:bg-neutral-900/50 p-4 rounded-xl border border-slate-100 dark:border-neutral-800 dark:bg-[#0a0a0a]">
-              <div className="flex justify-between items-end mb-2">
-                <span className="text-sm font-bold text-slate-700 dark:text-neutral-300 dark:text-neutral-200">Từ vựng</span>
-                <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">
-                  {stats.totalLearnedCards}/{stats.vocabCount || 0} từ · {stats.vocabCount ? Math.round((stats.totalLearnedCards / stats.vocabCount) * 100) : 0}%
-                </span>
-              </div>
-              <div className="w-full bg-slate-200 dark:bg-neutral-900 rounded-full h-2 dark:bg-neutral-800">
-                <div 
-                  className="bg-indigo-500 h-2 rounded-full transition-all duration-1000 ease-out" 
-                  style={{ width: `${stats.vocabCount ? Math.min(100, Math.round((stats.totalLearnedCards / stats.vocabCount) * 100)) : 0}%` }}
-                ></div>
-              </div>
-            </div>
-
-            {/* Category: Shadowing */}
-            <div className="bg-slate-50 dark:bg-neutral-900/50 p-4 rounded-xl border border-slate-100 dark:border-neutral-800 dark:bg-[#0a0a0a]">
-              <div className="flex justify-between items-end mb-2">
-                <span className="text-sm font-bold text-slate-700 dark:text-neutral-300 dark:text-neutral-200">Shadowing</span>
-                <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">
-                  {stats.completedShadowingSegments || 0}/{stats.totalShadowingSegments || 0} câu · {stats.totalShadowingSegments ? Math.round(((stats.completedShadowingSegments || 0) / stats.totalShadowingSegments) * 100) : 0}%
-                </span>
-              </div>
-              <div className="w-full bg-slate-200 dark:bg-neutral-900 rounded-full h-2 dark:bg-neutral-800">
-                <div 
-                  className="bg-sky-500 h-2 rounded-full transition-all duration-1000 ease-out" 
-                  style={{ width: `${stats.totalShadowingSegments ? Math.min(100, Math.round(((stats.completedShadowingSegments || 0) / stats.totalShadowingSegments) * 100)) : 0}%` }}
-                ></div>
-              </div>
-            </div>
-
-            {/* Category: Hội thoại */}
-            <div className="bg-slate-50 dark:bg-neutral-900/50 p-4 rounded-xl border border-slate-100 dark:border-neutral-800 dark:bg-[#0a0a0a]">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-bold text-slate-700 dark:text-neutral-300 dark:text-neutral-200">Hội thoại</span>
-                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded flex items-center gap-1 border border-emerald-100 dark:border-emerald-800/50">
-                  <Lock className="w-3 h-3" /> Sắp ra mắt
-                </span>
-              </div>
-              <div className="w-full bg-slate-200 dark:bg-neutral-900 rounded-full h-2 dark:bg-neutral-800">
-                <div className="bg-slate-300 dark:bg-neutral-700 h-2 rounded-full" style={{ width: '0%' }}></div>
-              </div>
-            </div>
-
-            {/* Category: Luyện thi chứng chỉ */}
-            <div className="bg-slate-50 dark:bg-neutral-900/50 p-4 rounded-xl border border-slate-100 dark:border-neutral-800 dark:bg-[#0a0a0a]">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-bold text-slate-700 dark:text-neutral-300 dark:text-neutral-200">Luyện thi chứng chỉ</span>
-                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded flex items-center gap-1 border border-emerald-100 dark:border-emerald-800/50">
-                  <Lock className="w-3 h-3" /> Sắp ra mắt
-                </span>
-              </div>
-              <div className="w-full bg-slate-200 dark:bg-neutral-900 rounded-full h-2 dark:bg-neutral-800">
-                <div className="bg-slate-300 dark:bg-neutral-700 h-2 rounded-full" style={{ width: '0%' }}></div>
-              </div>
-            </div>
-          </div>
-        </div>
 
       </div>
     </div>

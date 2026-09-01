@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, Sparkles, LayoutDashboard, Library, BookOpen, LineChart, Settings, Zap, Lock } from "lucide-react";
 import UserMenuClient from "./UserMenuClient";
+import NotificationBell from "./NotificationBell";
 import { PlanFeatures } from "@/lib/plans";
 
 export default function MobileHeader({ user, planFeatures }: { user: any, planFeatures?: PlanFeatures }) {
@@ -36,12 +37,15 @@ export default function MobileHeader({ user, planFeatures }: { user: any, planFe
         <Link href="/dashboard" className="flex items-center">
           <span className="text-xl font-black text-slate-900 dark:text-white tracking-tighter">LUMINA</span>
         </Link>
-        <button 
-          onClick={() => setIsOpen(true)} 
-          className="p-2 -mr-2 text-slate-600 hover:text-slate-900 transition-colors dark:text-white dark:text-neutral-300"
-        >
-          <Menu className="w-6 h-6" />
-        </button>
+        <div className="flex items-center gap-1">
+          {user && <NotificationBell />}
+          <button 
+            onClick={() => setIsOpen(true)} 
+            className="p-2 -mr-1 text-slate-600 hover:text-slate-900 transition-colors dark:text-white dark:text-neutral-300"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+        </div>
       </div>
       
       {/* Fullscreen Overlay Menu */}

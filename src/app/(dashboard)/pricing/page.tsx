@@ -8,7 +8,7 @@ export default async function PricingPage() {
   const { data: { user } } = await supabase.auth.getUser();
   const userPlan = (user?.user_metadata?.plan || 'free').toLowerCase();
 
-  const { data: plans } = await supabase.from('plans').select('*').eq('is_active', true).order('price_usd');
+  const { data: plans } = await supabase.from('plans').select('*').order('price_usd');
   
   return (
     <div className="py-6 sm:py-8">
