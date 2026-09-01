@@ -22,15 +22,15 @@ type VideoItem = {
   assetId?: string;
 };
 
-export default function UploadMedia({ userId, isPro = false, todayCount = 0, dailyLimit = 10 }: { userId: string, isPro?: boolean, todayCount?: number, dailyLimit?: number }) {
+export default function UploadMedia({ userId, isPro = false, todayCount = 0, dailyLimit = 10, maxVocab }: { userId: string, isPro?: boolean, todayCount?: number, dailyLimit?: number, maxVocab?: number }) {
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState<"input" | "parsing" | "preview" | "uploading">("input");
   const [activeTab, setActiveTab] = useState<"youtube" | "upload">("youtube");
   
   const [file, setFile] = useState<File | null>(null);
   const [youtubeUrl, setYoutubeUrl] = useState("");
-  const [targetLanguage, setTargetLanguage] = useState("English");
-  const [targetCount, setTargetCount] = useState<number | "">(35);
+  const [targetLanguage, setTargetLanguage] = useState("AI_English");
+  const [targetCount, setTargetCount] = useState<number | "">(maxVocab && maxVocab > 0 && maxVocab < 35 ? maxVocab : 35);
   const [error, setError] = useState<string | null>(null);
   
   const [videos, setVideos] = useState<VideoItem[]>([]);

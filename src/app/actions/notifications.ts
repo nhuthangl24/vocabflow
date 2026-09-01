@@ -11,29 +11,70 @@ export async function getNotificationsAction(limit = 20) {
       return { success: false, error: "Unauthorized" };
     }
 
-    const { data, error } = await supabase
+    // Fetch personal notifications
+    const { data: personal } = await supabase
       .from('notification_history')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(limit);
 
-    if (error) {
-      console.error("Error fetching notifications:", error);
-      return { success: false, error: error.message };
-    }
+    // Fetch global notifications that are active
+    const { data: globalNotifs } = await supabase
+      .from('notifications')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit * 2); // Fetch more so we can filter in-memory
 
-    // Lấy số lượng thông báo chưa đọc
-    const { count, error: countError } = await supabase
-      .from('notification_history')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .eq('is_read', false);
+    // Fetch user reads for global notifications
+    const { data: reads } = await supabase
+      .from('notification_reads')
+      .select('notification_id')
+      .eq('user_id', user.id);
+
+    const readIds = new Set((reads || []).map(r => r.notification_id));
+
+    const userPlan = (user.user_metadata?.plan || 'free').toLowerCase();
+    const userCreatedAt = new Date(user.created_at || Date.now());
+
+    // Map and filter global to match personal structure
+    const formattedGlobal = (globalNotifs || [])
+      .filter(g => {
+        const target = g.target_users || {};
+        // 1. Check Plan target
+        if (target.type === 'plan' && target.plan_id !== userPlan) return false;
+        
+        // 2. Check include_new_users target
+        if (target.include_new_users === false) {
+          const notifCreatedAt = new Date(g.created_at);
+          if (userCreatedAt > notifCreatedAt) return false;
+        }
+
+        return true;
+      })
+      .map(g => ({
+      id: g.id,
+      user_id: user.id,
+      type: g.type,
+      title: g.title,
+      content: g.message,
+      action_url: g.action_url,
+      is_read: readIds.has(g.id),
+      created_at: g.created_at,
+      is_global: true // custom flag to distinguish
+    }));
+
+    // Merge and sort
+    const allNotifications = [...(personal || []), ...formattedGlobal]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, limit);
+
+    const unreadCount = allNotifications.filter(n => !n.is_read).length;
 
     return { 
       success: true, 
-      data: data || [],
-      unreadCount: count || 0
+      data: allNotifications,
+      unreadCount
     };
   } catch (error: any) {
     console.error("Exception fetching notifications:", error);
@@ -41,7 +82,7 @@ export async function getNotificationsAction(limit = 20) {
   }
 }
 
-export async function markNotificationAsReadAction(notificationId: string) {
+export async function markNotificationAsReadAction(notificationId: string, isGlobal = false) {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -50,28 +91,36 @@ export async function markNotificationAsReadAction(notificationId: string) {
       return { success: false, error: "Unauthorized" };
     }
 
-    // Nếu truyền id là 'all', đánh dấu tất cả
     if (notificationId === 'all') {
-      const { error } = await supabase
+      // Mark all personal as read
+      await supabase
         .from('notification_history')
         .update({ is_read: true, read_at: new Date().toISOString() })
         .eq('user_id', user.id)
         .eq('is_read', false);
         
-      if (error) return { success: false, error: error.message };
+      // Mark all active global as read
+      const { data: globalNotifs } = await supabase.from('notifications').select('id');
+      if (globalNotifs && globalNotifs.length > 0) {
+        const reads = globalNotifs.map(g => ({ notification_id: g.id, user_id: user.id }));
+        await supabase.from('notification_reads').upsert(reads, { onConflict: 'notification_id, user_id' });
+      }
       return { success: true };
     }
 
-    // Nếu truyền id cụ thể
-    const { error } = await supabase
-      .from('notification_history')
-      .update({ is_read: true, read_at: new Date().toISOString() })
-      .eq('id', notificationId)
-      .eq('user_id', user.id);
-
-    if (error) {
-      console.error("Error marking notification as read:", error);
-      return { success: false, error: error.message };
+    if (isGlobal) {
+      const { error } = await supabase.from('notification_reads').upsert({
+        notification_id: notificationId,
+        user_id: user.id
+      }, { onConflict: 'notification_id, user_id' });
+      if (error) return { success: false, error: error.message };
+    } else {
+      const { error } = await supabase
+        .from('notification_history')
+        .update({ is_read: true, read_at: new Date().toISOString() })
+        .eq('id', notificationId)
+        .eq('user_id', user.id);
+      if (error) return { success: false, error: error.message };
     }
 
     return { success: true };

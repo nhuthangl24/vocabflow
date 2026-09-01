@@ -24,6 +24,7 @@ export default async function DashboardPage() {
   const isPro = planFeatures.name === 'PRO' || planFeatures.name === 'LIFETIME' || isAdmin;
   const dailyLimit = planFeatures.daily_video_limit;
   const maxVocab = planFeatures.max_vocabulary_per_video;
+  const canUpload = isAdmin || planFeatures.enable_personal_upload;
 
   if (user) {
     const today = new Date();

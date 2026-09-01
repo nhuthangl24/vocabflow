@@ -15,21 +15,23 @@ export default function InlineUploadBanner({
   todayCount = 0,
   dailyLimit = 2,
   module = 'vocabulary',
-  maxVocab
+  maxVocab,
+  canUpload = true
 }: { 
   userId: string, 
   isPro?: boolean,
   todayCount?: number,
   dailyLimit?: number,
   module?: 'vocabulary' | 'shadowing',
-  maxVocab?: number
+  maxVocab?: number,
+  canUpload?: boolean
 }) {
   const router = useRouter();
   const supabase = createClient();
   const [activeTab, setActiveTab] = useState<'youtube' | 'upload'>('youtube');
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [targetLanguage, setTargetLanguage] = useState("AI_English");
-  const [targetCount, setTargetCount] = useState<number | "">(35);
+  const [targetCount, setTargetCount] = useState<number | "">(maxVocab && maxVocab > 0 && maxVocab < 35 ? maxVocab : 35);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   
@@ -205,7 +207,22 @@ export default function InlineUploadBanner({
         {/* Input Section */}
         <div className="w-full z-10 bg-slate-50/50 dark:bg-[#0a0a0a]/50 rounded-xl border border-slate-100 dark:border-neutral-800 p-2 shadow-inner relative">
           
-          {limitReached && (
+          {!canUpload && (
+            <div className="absolute inset-0 z-20 rounded-xl flex flex-col items-center justify-center bg-white/80 dark:bg-neutral-900/90 backdrop-blur-sm border border-slate-200 dark:border-neutral-700">
+              <div className="flex flex-col items-center text-center px-6">
+                <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 flex items-center justify-center mb-3">
+                  <svg className="w-4 h-4 text-slate-500 dark:text-neutral-400" fill="currentColor" viewBox="0 0 24 24"><path d="M17 8h-1V6c0-2.76-2.24-5-5-5S6 3.24 6 6v2H5c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-5 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+                </div>
+                <p className="text-sm font-semibold text-slate-800 dark:text-white mb-1">Tính năng dành cho Basic &amp; Pro</p>
+                <p className="text-xs text-slate-500 dark:text-neutral-400 mb-4 leading-relaxed">Gói FREE chỉ dùng được kho video có sẵn bên dưới</p>
+                <Link href="/pricing" className="px-5 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-semibold rounded-lg hover:bg-slate-700 dark:hover:bg-slate-100 transition-colors">
+                  Nâng cấp ngay
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {canUpload && limitReached && (
             <div className="absolute inset-0 bg-white/60 dark:bg-[#0a0a0a]/60 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center rounded-xl border border-rose-200 dark:border-rose-900/50">
               <p className="text-sm font-bold text-slate-900 dark:text-white mb-2">
                 {dailyLimit === 0 ? "Tính năng dành riêng cho tài khoản Basic & Pro" : "Đã hết lượt xử lý AI hôm nay"}
@@ -216,7 +233,7 @@ export default function InlineUploadBanner({
             </div>
           )}
 
-          <form onSubmit={handleProcess} className={`flex flex-col gap-2 ${limitReached ? 'opacity-50 pointer-events-none' : ''}`}>
+          <form onSubmit={handleProcess} className={`flex flex-col gap-2 ${(!canUpload || limitReached) ? 'opacity-50 pointer-events-none' : ''}`}>
             
             {/* Tabs */}
             <div className="flex items-center justify-between px-1 pt-1 pb-2">
@@ -317,6 +334,7 @@ export default function InlineUploadBanner({
                       value={targetCount}
                       onChange={(e) => {
                          let val: number | "" = e.target.value === "" ? "" : Number(e.target.value);
+                         if (val !== "" && val < 0) val = 0;
                          if (val !== "" && maxVocab && maxVocab > 0 && val > maxVocab) {
                             val = maxVocab;
                             toast.error(`Gói của bạn chỉ hỗ trợ tối đa ${maxVocab} từ vựng/video`, { id: 'vocab-limit' });

@@ -72,9 +72,9 @@ export default function AdminUsersClient({
   const totalPages = Math.ceil(totalCount / 20);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500">
+    <div className="max-w-7xl mx-auto flex flex-col h-[calc(100vh-3rem)] md:h-[calc(100vh-4rem)] animate-in fade-in duration-500">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-neutral-800/60 pb-4">
+      <div className="flex-none flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-neutral-800/60 pb-4 mb-6">
         <div>
           <h2 className="text-2xl font-semibold text-white tracking-tight flex items-center gap-2">
             User Management Center
@@ -106,7 +106,7 @@ export default function AdminUsersClient({
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="flex-none grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="p-4 rounded-xl border border-neutral-800/60 bg-[#0a0a0a]">
           <div className="text-sm font-medium text-neutral-400 mb-1">Tổng User</div>
           <div className="text-2xl font-bold text-white">{stats.total.toLocaleString()}</div>
@@ -126,8 +126,8 @@ export default function AdminUsersClient({
       </div>
 
       {/* Table */}
-      <div className="bg-[#0a0a0a] rounded-xl border border-neutral-800/60 overflow-hidden shadow-xl shadow-black/40">
-        <div className="overflow-x-auto min-h-[400px]">
+      <div className="flex-1 min-h-0 bg-[#0a0a0a] rounded-xl border border-neutral-800/60 overflow-hidden shadow-xl shadow-black/40 flex flex-col">
+        <div className="flex-1 overflow-auto">
           <table className="w-full text-left text-sm text-neutral-400">
             <thead className="text-xs text-neutral-500 bg-neutral-900/40 uppercase tracking-wider">
               <tr>

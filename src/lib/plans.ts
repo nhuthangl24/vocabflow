@@ -10,6 +10,7 @@ export type PlanFeatures = {
   enable_personal_upload: boolean;
   enable_system_library: boolean;
   enable_shadowing: boolean;
+  enable_shadowing_upload: boolean;
   
   daily_video_limit: number;
   max_video_duration_minutes: number;
@@ -21,9 +22,10 @@ export type PlanFeatures = {
   max_decks: number;
   max_flashcards: number;
   retention_days: number;
+  [key: string]: any; // Allow dynamic DB fields
 };
 
-// Default free plan features if none found
+// Fallback in case DB is completely empty
 export const DEFAULT_FREE_PLAN: PlanFeatures = {
   name: "FREE",
   enable_vocabulary: true,
@@ -34,6 +36,7 @@ export const DEFAULT_FREE_PLAN: PlanFeatures = {
   enable_personal_upload: true,
   enable_system_library: false,
   enable_shadowing: false,
+  enable_shadowing_upload: false,
   
   daily_video_limit: 2,
   max_video_duration_minutes: 25,
@@ -41,9 +44,9 @@ export const DEFAULT_FREE_PLAN: PlanFeatures = {
   max_vocabulary_per_video: 25,
   monthly_shadowing_limit: 0,
   max_ai_calls_per_month: 0,
-  max_storage_bytes: 10 * 1024 * 1024 * 1024, // 10GB
+  max_storage_bytes: 10 * 1024 * 1024 * 1024,
   max_decks: 3,
-  max_flashcards: 500, // User request: free 500
+  max_flashcards: 500,
   retention_days: 30,
 };
 
@@ -51,7 +54,6 @@ export async function getUserPlanFeatures(user: any): Promise<PlanFeatures> {
   const adminEmails = process.env.ADMIN_EMAILS?.split(',') || [];
   const isAdmin = user?.email && adminEmails.includes(user.email);
   
-  // If user is admin, return infinite/unlocked plan
   if (isAdmin) {
     return {
       name: "ADMIN",
@@ -63,6 +65,7 @@ export async function getUserPlanFeatures(user: any): Promise<PlanFeatures> {
       enable_personal_upload: true,
       enable_system_library: true,
       enable_shadowing: true,
+      enable_shadowing_upload: true,
       
       daily_video_limit: 999999,
       max_video_duration_minutes: 999999,
@@ -77,41 +80,80 @@ export async function getUserPlanFeatures(user: any): Promise<PlanFeatures> {
     };
   }
 
-  const planName = (user?.user_metadata?.plan || "free").toUpperCase();
   const supabase = await createClient();
+  let planId = null;
+  let planName = 'FREE';
 
-  const { data: planData, error } = await supabase
-    .from("plans")
-    .select("*")
-    .ilike("name", planName)
-    .single();
-
-  if (error || !planData) {
-    console.error("Could not fetch user plan features, falling back to default:", error?.message);
-    return DEFAULT_FREE_PLAN;
+  // 1. Fetch active subscription if exists
+  if (user?.id) {
+    const { data: sub } = await supabase
+      .from('subscriptions')
+      .select('plan_id, plans(name)')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .maybeSingle();
+      
+    if (sub && sub.plan_id) {
+      planId = sub.plan_id;
+      const subPlans: any = sub.plans;
+      planName = subPlans?.name || (Array.isArray(subPlans) ? subPlans[0]?.name : 'UNKNOWN') || 'UNKNOWN';
+    }
   }
 
-  // Parse DB row to PlanFeatures, with fallbacks for 0 (unlimited) or missing values
-  return {
-    name: planData.name,
-    enable_vocabulary: planData.enable_vocabulary ?? true,
-    enable_grammar: planData.enable_grammar ?? true,
-    enable_flashcards: planData.enable_flashcards ?? true,
-    enable_srs: planData.enable_srs ?? true,
-    enable_library: planData.enable_library ?? true,
-    enable_personal_upload: planData.enable_personal_upload ?? true,
-    enable_system_library: planData.enable_system_library ?? false,
-    enable_shadowing: planData.enable_shadowing ?? false,
+  // 2. Fallback to user_metadata plan if no active sub
+  if (!planId) {
+    const metaPlan = user?.user_metadata?.plan;
+    const fallbackSlug = (metaPlan && metaPlan !== 'free') ? metaPlan : 'free';
     
-    daily_video_limit: planData.daily_video_limit === 0 ? 999999 : (planData.daily_video_limit ?? DEFAULT_FREE_PLAN.daily_video_limit),
-    max_video_duration_minutes: planData.max_video_duration_minutes === 0 ? 999999 : (planData.max_video_duration_minutes ?? DEFAULT_FREE_PLAN.max_video_duration_minutes),
-    max_shadowing_minutes: planData.max_shadowing_minutes === 0 ? 999999 : (planData.max_shadowing_minutes ?? DEFAULT_FREE_PLAN.max_shadowing_minutes),
-    max_vocabulary_per_video: planData.max_vocabulary_per_video === 0 ? 999999 : (planData.max_vocabulary_per_video ?? DEFAULT_FREE_PLAN.max_vocabulary_per_video),
-    monthly_shadowing_limit: planData.monthly_shadowing_limit === 0 ? 999999 : (planData.monthly_shadowing_limit ?? 0),
-    max_ai_calls_per_month: planData.max_ai_calls_per_month === 0 ? 999999 : (planData.max_ai_calls_per_month ?? 0),
-    max_storage_bytes: planData.max_storage_bytes === 0 ? 9999999999999 : (planData.max_storage_bytes ?? DEFAULT_FREE_PLAN.max_storage_bytes),
-    max_decks: planData.max_decks === 0 ? 999999 : (planData.max_decks ?? DEFAULT_FREE_PLAN.max_decks),
-    max_flashcards: planData.max_flashcards === 0 ? 999999 : (planData.max_flashcards ?? (planData.name.toLowerCase() === 'basic' ? 1000 : DEFAULT_FREE_PLAN.max_flashcards)),
-    retention_days: planData.retention_days === 0 ? 999999 : (planData.retention_days ?? DEFAULT_FREE_PLAN.retention_days),
-  };
+    const { data: fallbackPlan } = await supabase
+      .from('plans')
+      .select('id, name')
+      .ilike('slug', fallbackSlug)
+      .maybeSingle();
+      
+    if (fallbackPlan) {
+      planId = fallbackPlan.id;
+      planName = fallbackPlan.name;
+    }
+  }
+
+  // 3. If DB is totally empty, return hardcoded default
+  if (!planId) return DEFAULT_FREE_PLAN;
+
+  // 4. Fetch dynamic features and limits
+  const [featuresRes, limitsRes] = await Promise.all([
+    supabase.from('plan_features').select('feature_key, is_enabled').eq('plan_id', planId),
+    supabase.from('plan_limits').select('limit_key, limit_value').eq('plan_id', planId)
+  ]);
+
+  const featuresList = featuresRes.data || [];
+  const limitsList = limitsRes.data || [];
+
+  // Initialize result with safe defaults for required TypeScript fields
+  const result: PlanFeatures = { ...DEFAULT_FREE_PLAN, name: planName };
+
+  // Map boolean features
+  for (const f of featuresList) {
+    result[f.feature_key] = f.is_enabled;
+  }
+
+  // Map numeric limits (and handle 0 = infinite convention)
+  for (const l of limitsList) {
+    const val = Number(l.limit_value);
+    // If val is 0, consider it unlimited (999999), otherwise use the value.
+    // EXCEPT for monthly limits where 0 means literally 0 (no access). 
+    // Wait, the logic in previous code was: "0 means unlimited for storage/retention, but 0 means 0 for ai_calls".
+    // To be safe, we will just use the value directly, but for known keys we apply the legacy 0 logic.
+    if (val === 0) {
+      if (['max_storage_bytes', 'daily_video_limit', 'max_video_duration_minutes', 'max_shadowing_minutes', 'max_vocabulary_per_video', 'max_decks', 'retention_days'].includes(l.limit_key)) {
+        result[l.limit_key] = 999999;
+      } else {
+        result[l.limit_key] = 0;
+      }
+    } else {
+      result[l.limit_key] = val;
+    }
+  }
+
+  return result;
 }

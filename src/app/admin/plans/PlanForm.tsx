@@ -9,10 +9,11 @@ const FEATURE_FLAGS = [
   { key: "enable_vocabulary", label: "Từ vựng (Vocabulary)", desc: "Phân tích từ vựng từ video", icon: BookOpen },
   { key: "enable_grammar", label: "Ngữ pháp (Grammar)", desc: "Phân tích cấu trúc ngữ pháp", icon: Brain },
   { key: "enable_shadowing", label: "Phòng Shadowing", desc: "Luyện nói theo video", icon: Zap },
+  { key: "enable_shadowing_upload", label: "Upload YouTube vào Shadowing", desc: "Tự upload link YouTube để luyện Shadowing", icon: Upload },
   { key: "enable_flashcards", label: "Flashcards", desc: "Thẻ ghi nhớ", icon: Layers },
   { key: "enable_srs", label: "SRS / FSRS", desc: "Hệ thống ôn tập thông minh", icon: RefreshCw },
   { key: "enable_library", label: "Thư viện cá nhân", desc: "Lưu video của mình", icon: Library },
-  { key: "enable_personal_upload", label: "Upload YouTube cá nhân", desc: "User tự upload link YouTube", icon: Upload },
+  { key: "enable_personal_upload", label: "Upload YouTube cá nhân (Từ vựng)", desc: "User tự upload link YouTube để học từ vựng", icon: Upload },
   { key: "enable_system_library", label: "Kho video hệ thống", desc: "Truy cập video Admin upload", icon: Globe },
 ] as const;
 
@@ -194,7 +195,7 @@ function NumberField({ label, name, defaultValue }: { label: string; name: strin
   return (
     <div>
       <label className="block text-xs font-medium text-neutral-400 mb-1.5">{label}</label>
-      <input type="number" name={name} defaultValue={defaultValue ?? 0} min="0"
+      <input type="number" name={name} defaultValue={defaultValue ?? 0}
         className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 focus:border-indigo-500 rounded-xl outline-none text-sm text-white font-mono"
       />
     </div>

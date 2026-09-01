@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Headphones } from "lucide-react";
 import InlineUploadBanner from "@/components/dashboard/InlineUploadBanner";
 import ShadowingLibraryClient from "./ShadowingLibraryClient";
+import { getUserPlanFeatures } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
 
@@ -41,8 +42,12 @@ export default async function ShadowingLibraryPage() {
 
   const adminEmails = process.env.ADMIN_EMAILS?.split(',') || [];
   const isAdmin = user && user.email && adminEmails.includes(user.email);
-  const userPlanName = (user?.user_metadata?.plan || 'free').toUpperCase();
+  
+  const planFeatures = await getUserPlanFeatures(user);
+  const userPlanName = planFeatures.name;
   const isPro = userPlanName === 'PRO';
+  // FREE can browse the built-in library but cannot upload their own YouTube for shadowing
+  const canUpload = !!(isAdmin || planFeatures.enable_shadowing_upload);
 
   // Fetch plan dynamically for limits
   const { data: planData } = await supabase.from('plans').select('monthly_shadowing_limit').ilike('name', userPlanName).single();
@@ -95,6 +100,7 @@ export default async function ShadowingLibraryPage() {
           dailyLimit={monthlyLimit}
           todayCount={monthlyCount}
           module="shadowing"
+          canUpload={canUpload}
         />
       )}
 

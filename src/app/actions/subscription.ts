@@ -23,6 +23,25 @@ export async function upgradePlanAction(planName: string) {
 
   // BẢO MẬT: Phải dùng Admin Client để update user_metadata, tránh việc hacker dùng Client key tự cấp quyền cho mình.
   const adminAuthClient = createAdminClient();
+  
+  // Upsert subscription
+  let currentPeriodEnd = new Date();
+  const { data: planData } = await adminAuthClient.from('plans').select('id, billing_period').ilike('slug', normalizedPlan).maybeSingle();
+  if (planData) {
+    if (planData.billing_period === 'yearly') {
+      currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 1);
+    } else {
+      currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
+    }
+    
+    const { data: existingSub } = await adminAuthClient.from('subscriptions').select('id').eq('user_id', user.id).maybeSingle();
+    if (existingSub) {
+      await adminAuthClient.from('subscriptions').update({ plan_id: planData.id, current_period_end: currentPeriodEnd.toISOString(), status: 'active' }).eq('id', existingSub.id);
+    } else {
+      await adminAuthClient.from('subscriptions').insert({ user_id: user.id, plan_id: planData.id, current_period_end: currentPeriodEnd.toISOString(), status: 'active' });
+    }
+  }
+
   const { data, error } = await adminAuthClient.auth.admin.updateUserById(user.id, {
     user_metadata: { plan: normalizedPlan }
   });

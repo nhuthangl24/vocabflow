@@ -34,9 +34,11 @@ const NAV_GROUPS = [
     label: "Người dùng & Tài chính",
     items: [
       { name: "Người dùng", href: "/admin/users", icon: Users },
+      { name: "Trung tâm Thông báo", href: "/admin/notifications", icon: Bell },
       { name: "Quản lý Plans", href: "/admin/plans", icon: CreditCard },
       { name: "Gói đăng ký", href: "/admin/subscriptions", icon: CreditCard },
       { name: "Thanh toán", href: "/admin/payments", icon: Receipt },
+      { name: "Mã giảm giá (Vouchers)", href: "/admin/vouchers", icon: Receipt },
       { name: "Chi phí AI", href: "/admin/cost", icon: DollarSign },
     ]
   },

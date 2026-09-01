@@ -1,8 +1,10 @@
 "use client";
+import toast from "react-hot-toast";
 
 import { useState, useEffect, useRef } from "react";
 import { Bell, Check, CircleAlert, Crown, Zap, Info, CreditCard } from "lucide-react";
 import { getNotificationsAction, markNotificationAsReadAction } from "@/app/actions/notifications";
+import { createClient } from "@/lib/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 
@@ -15,14 +17,38 @@ export default function NotificationBell({ placement = 'bottom' }: NotificationB
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchNotifications();
 
-    // Setup polling every 1 minute
-    const intervalId = setInterval(fetchNotifications, 60000);
-    return () => clearInterval(intervalId);
+    // Setup Supabase Realtime
+    const supabase = createClient();
+    
+    // Create a unique channel name to prevent cache collision or reuse issues
+    const channelId = `realtime-notifications-${Math.random().toString(36).substring(2, 9)}`;
+    
+      const channel = supabase.channel(channelId)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notification_history' },
+        () => {
+          fetchNotifications(true);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications' },
+        () => {
+          fetchNotifications(true);
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   useEffect(() => {
@@ -35,16 +61,37 @@ export default function NotificationBell({ placement = 'bottom' }: NotificationB
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const fetchNotifications = async () => {
+  const unreadCountRef = useRef(0);
+
+  // Sync ref with state
+  useEffect(() => {
+    unreadCountRef.current = unreadCount;
+  }, [unreadCount]);
+
+  const fetchNotifications = async (showToast = false) => {
     const res = await getNotificationsAction(15);
     if (res.success) {
       setNotifications(res.data || []);
-      setUnreadCount(res.unreadCount || 0);
+      const newUnread = res.unreadCount || 0;
+      
+      // If we have more unread notifications than before, trigger toast and sound
+      if (showToast && newUnread > unreadCountRef.current) {
+        try {
+          const audio = new Audio('/sounds/notification.mp3');
+          audio.play().catch(e => console.log('Autoplay prevented:', e));
+        } catch (e) {}
+        
+        toast('🔔 Bạn có thông báo mới!', {
+          style: { background: '#4f46e5', color: '#fff', borderRadius: '12px', padding: '12px 16px', fontWeight: 600 },
+        });
+      }
+      
+      setUnreadCount(newUnread);
     }
   };
 
-  const handleMarkAsRead = async (id: string) => {
-    const res = await markNotificationAsReadAction(id);
+  const handleMarkAsRead = async (id: string, isGlobal = false) => {
+    const res = await markNotificationAsReadAction(id, isGlobal);
     if (res.success) {
       if (id === 'all') {
         setNotifications(notifications.map(n => ({ ...n, is_read: true })));
@@ -96,7 +143,7 @@ export default function NotificationBell({ placement = 'bottom' }: NotificationB
             )}
           </div>
           
-          <div className="flex-1 overflow-y-auto min-h-[300px]">
+          <div className="flex-1 overflow-y-auto min-h-[300px] max-h-[60vh] overscroll-contain scrollbar-thin scrollbar-thumb-neutral-800 scrollbar-track-transparent">
             {notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full p-8 text-center text-slate-500 dark:text-neutral-500">
                 <Bell className="w-8 h-8 mb-3 opacity-20" />
@@ -109,7 +156,8 @@ export default function NotificationBell({ placement = 'bottom' }: NotificationB
                     key={notification.id} 
                     className={`p-4 transition-colors hover:bg-slate-50 dark:hover:bg-neutral-900/50 cursor-pointer flex gap-3 ${!notification.is_read ? 'bg-indigo-50/30 dark:bg-indigo-500/5' : ''}`}
                     onClick={() => {
-                      if (!notification.is_read) handleMarkAsRead(notification.id);
+                      if (!notification.is_read) handleMarkAsRead(notification.id, notification.is_global);
+                      setExpandedId(expandedId === notification.id ? null : notification.id);
                     }}
                   >
                     <div className="shrink-0 mt-0.5">
@@ -127,7 +175,7 @@ export default function NotificationBell({ placement = 'bottom' }: NotificationB
                         )}
                       </div>
                       {notification.content && (
-                        <p className={`text-xs line-clamp-2 leading-relaxed ${!notification.is_read ? 'text-slate-600 dark:text-neutral-400' : 'text-slate-500 dark:text-neutral-500'}`}>
+                        <p className={`text-xs leading-relaxed transition-all duration-300 ${expandedId !== notification.id ? 'line-clamp-2' : 'whitespace-pre-wrap'} ${!notification.is_read ? 'text-slate-600 dark:text-neutral-400' : 'text-slate-500 dark:text-neutral-500'}`}>
                           {notification.content}
                         </p>
                       )}

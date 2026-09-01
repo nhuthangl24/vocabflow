@@ -16,7 +16,15 @@ export default function LoginModal() {
   const router = useRouter();
   const supabase = createClient();
   const [isOpen, setIsOpen] = useState(true);
-
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('banned') === 'true') {
+        setError("Tài khoản của bạn đã bị khóa viễn viễn do vi phạm điều khoản sử dụng (F12/DevTools).");
+      }
+    }
+  }, []);
   // Close modal when pressing Escape
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

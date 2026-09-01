@@ -75,19 +75,40 @@ function ConfigRow({
   );
 }
 
+import { updateAutoTrialSettingsAction } from "./actions";
+import { toast } from "react-hot-toast";
+
 export default function SystemSettingsClient({ providerSettings, envInfo, systemStats }: Props) {
+  // Parse auto_trial from providerSettings if exists
+  const autoTrialSetting = providerSettings.find(s => s.key === 'auto_trial')?.value || {
+    enabled: false,
+    plan: 'PRO',
+    days: 3
+  };
+
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "ok" | "err">("idle");
+  const [autoTrial, setAutoTrial] = useState({
+    enabled: !!autoTrialSetting.enabled,
+    plan: autoTrialSetting.plan || 'PRO',
+    days: autoTrialSetting.days || 3
+  });
 
-  const handleSaveProviderSettings = async () => {
+  const handleSaveAutoTrial = async () => {
     setSaving(true);
     try {
-      // In a real implementation this would POST to /api/admin/system-config
-      await new Promise((r) => setTimeout(r, 800));
-      setSaveStatus("ok");
-      setTimeout(() => setSaveStatus("idle"), 3000);
+      const res = await updateAutoTrialSettingsAction(autoTrial);
+      if (res.success) {
+        setSaveStatus("ok");
+        toast.success("Đã lưu cấu hình Auto Trial");
+        setTimeout(() => setSaveStatus("idle"), 3000);
+      } else {
+        setSaveStatus("err");
+        toast.error("Lỗi: " + res.error);
+      }
     } catch {
       setSaveStatus("err");
+      toast.error("Lỗi không xác định");
     } finally {
       setSaving(false);
     }
@@ -205,6 +226,60 @@ export default function SystemSettingsClient({ providerSettings, envInfo, system
             description="ANTHROPIC_API_KEY (optional)"
             isOk={envInfo.anthropicConfigured}
           />
+        </div>
+      </div>
+
+      {/* Auto Trial Config */}
+      <div className="bg-[#0a0a0a] rounded-xl border border-neutral-800/60 overflow-hidden shadow-xl shadow-black/40">
+        <div className="px-5 py-4 border-b border-neutral-800/60 bg-neutral-900/30 flex items-center justify-between">
+          <h3 className="text-sm font-medium text-neutral-200 flex items-center gap-2">
+            <Zap className="w-4 h-4 text-emerald-400" />
+            Cấu hình Dùng Thử (Auto Trial)
+          </h3>
+          <button 
+            onClick={handleSaveAutoTrial}
+            disabled={saving}
+            className="px-4 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg transition-colors"
+          >
+            {saving ? "Đang lưu..." : "Lưu thay đổi"}
+          </button>
+        </div>
+        <div className="p-5 grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-neutral-400 mb-2">Trạng thái</label>
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => setAutoTrial({ ...autoTrial, enabled: !autoTrial.enabled })}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${autoTrial.enabled ? 'bg-emerald-500' : 'bg-neutral-700'}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${autoTrial.enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+              <span className="text-sm text-neutral-300">{autoTrial.enabled ? "Bật (Auto-grant trial)" : "Tắt (Mặc định Free)"}</span>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-neutral-400 mb-2">Gói trải nghiệm</label>
+            <select 
+              value={autoTrial.plan} 
+              onChange={e => setAutoTrial({ ...autoTrial, plan: e.target.value })}
+              className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-sm text-white outline-none focus:border-emerald-500"
+            >
+              <option value="BASIC">BASIC</option>
+              <option value="PRO">PRO</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-neutral-400 mb-2">Số ngày trải nghiệm</label>
+            <input 
+              type="number" min={1} max={30}
+              value={autoTrial.days === 0 ? '' : autoTrial.days} 
+              onChange={e => {
+                const val = e.target.value;
+                setAutoTrial({ ...autoTrial, days: val === '' ? 0 : parseInt(val) || 0 })
+              }}
+              className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-sm text-white outline-none focus:border-emerald-500"
+            />
+          </div>
         </div>
       </div>
 

@@ -8,7 +8,7 @@ export default async function AdminPlansPage() {
   const admin = createAdminClient();
 
   const [{ data: plans }, { data: subCounts }] = await Promise.all([
-    admin.from("plans").select("*").order("sort_order").order("price_usd"),
+    admin.from("plans").select("*, plan_features(feature_key, is_enabled), plan_limits(limit_key, limit_value)").order("sort_order").order("price_usd"),
     admin
       .from("subscriptions")
       .select("plan_id")
@@ -21,10 +21,20 @@ export default async function AdminPlansPage() {
     if (sub.plan_id) subscriberMap[sub.plan_id] = (subscriberMap[sub.plan_id] || 0) + 1;
   }
 
-  const plansWithCounts = (plans || []).map(p => ({
-    ...p,
-    subscriber_count: subscriberMap[p.id] || 0,
-  }));
+  const plansWithCounts = (plans || []).map(p => {
+    const flatPlan = { ...p, subscriber_count: subscriberMap[p.id] || 0 };
+    
+    if (p.plan_features) {
+      for (const f of p.plan_features) flatPlan[f.feature_key] = f.is_enabled;
+    }
+    if (p.plan_limits) {
+      for (const l of p.plan_limits) flatPlan[l.limit_key] = Number(l.limit_value);
+    }
+    
+    delete flatPlan.plan_features;
+    delete flatPlan.plan_limits;
+    return flatPlan;
+  });
 
   return <PlansClient plans={plansWithCounts} />;
 }

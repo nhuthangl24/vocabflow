@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import PresenceProvider from "@/components/providers/PresenceProvider";
 import { getUserPlanFeatures } from "@/lib/plans";
 import NotificationBell from "@/components/layout/NotificationBell";
+import DevToolsDetector from "@/components/DevToolsDetector";
 
 export default async function DashboardLayout({
   children,
@@ -17,6 +18,7 @@ export default async function DashboardLayout({
   return (
     <div className="flex h-screen bg-grid-paper font-sans overflow-hidden">
       {user && user.email && <PresenceProvider userId={user.id} email={user.email} />}
+      {user && <DevToolsDetector />}
       <Sidebar />
       <div className="flex-1 flex flex-col h-screen relative min-w-0">
         <MobileHeader user={user} planFeatures={planFeatures} />

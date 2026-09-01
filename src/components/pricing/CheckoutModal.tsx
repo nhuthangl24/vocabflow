@@ -19,7 +19,18 @@ export function CheckoutModal({ plan, isOpen, onClose, onSuccess }: CheckoutModa
   const [step, setStep] = useState<'select' | 'qr' | 'expired'>('select');
   const [orderData, setOrderData] = useState<any>(null);
   const [timeLeft, setTimeLeft] = useState(180); // 3 minutes
+  const [voucherCode, setVoucherCode] = useState("");
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [finalAmount, setFinalAmount] = useState(plan?.price_usd || 0);
+  const [voucherError, setVoucherError] = useState("");
+  const [isValidatingVoucher, setIsValidatingVoucher] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    if (plan) {
+      setFinalAmount(plan.price_usd - discountAmount);
+    }
+  }, [plan, discountAmount]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -48,8 +59,12 @@ export function CheckoutModal({ plan, isOpen, onClose, onSuccess }: CheckoutModa
       setOrderData(null);
       setTimeLeft(180);
       setError("");
+      setVoucherCode("");
+      setDiscountAmount(0);
+      setVoucherError("");
+      if (plan) setFinalAmount(plan.price_usd);
     }
-  }, [isOpen]);
+  }, [isOpen, plan]);
 
   if (!isOpen || !plan) return null;
 
@@ -59,7 +74,9 @@ export function CheckoutModal({ plan, isOpen, onClose, onSuccess }: CheckoutModa
     setError("");
 
     try {
-      const result = await createOrderAction(plan.name, plan.price_usd);
+      // We pass the voucherCode to the server so it can calculate the final amount securely
+      const appliedVoucher = discountAmount > 0 ? voucherCode : undefined;
+      const result = await createOrderAction(plan.name, appliedVoucher);
 
       if (result.success) {
         setOrderData(result);
@@ -72,6 +89,35 @@ export function CheckoutModal({ plan, isOpen, onClose, onSuccess }: CheckoutModa
       setError(err.message || "Lỗi kết nối.");
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const applyVoucher = async () => {
+    if (!voucherCode.trim()) {
+      setVoucherError("Vui lòng nhập mã Voucher");
+      return;
+    }
+    setIsValidatingVoucher(true);
+    setVoucherError("");
+    try {
+      const res = await fetch("/api/user/checkout/validate-voucher", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: voucherCode, amount: plan.price_usd })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      
+      setDiscountAmount(data.discount_amount);
+      setFinalAmount(data.final_amount);
+      toast.success("Áp dụng mã giảm giá thành công!");
+    } catch (err: any) {
+      setVoucherError(err.message);
+      setDiscountAmount(0);
+      setFinalAmount(plan.price_usd);
+      toast.error(err.message);
+    } finally {
+      setIsValidatingVoucher(false);
     }
   };
 
@@ -110,12 +156,24 @@ export function CheckoutModal({ plan, isOpen, onClose, onSuccess }: CheckoutModa
                   <h3 className="text-2xl font-bold text-gray-900 dark:text-white capitalize">{plan.name} Plan</h3>
                 </div>
                 <div className="text-right">
-                  <p className="text-xl font-bold text-emerald-600 dark:text-emerald-500">
+                  <p className={`text-xl font-bold ${discountAmount > 0 ? 'text-gray-400 line-through text-sm' : 'text-emerald-600 dark:text-emerald-500'}`}>
                     {plan.price_usd.toLocaleString('vi-VN')}đ
                   </p>
+                  {discountAmount > 0 && (
+                    <p className="text-xl font-bold text-emerald-600 dark:text-emerald-500">
+                      {finalAmount.toLocaleString('vi-VN')}đ
+                    </p>
+                  )}
                   <p className="text-xs font-medium text-gray-500 dark:text-neutral-400">/ tháng</p>
                 </div>
               </div>
+              
+              {discountAmount > 0 && (
+                <div className="flex justify-between items-center text-sm font-medium text-emerald-600 dark:text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 p-2 rounded-lg mt-2">
+                  <span>Giảm giá Voucher:</span>
+                  <span>- {discountAmount.toLocaleString('vi-VN')}đ</span>
+                </div>
+              )}
             </div>
 
             <div className="bg-emerald-50 dark:bg-emerald-500/10 p-4 rounded-xl border border-emerald-100 dark:border-emerald-500/20 mb-6">
@@ -155,9 +213,30 @@ export function CheckoutModal({ plan, isOpen, onClose, onSuccess }: CheckoutModa
                 <CreditCard className="w-10 h-10 text-blue-600 dark:text-blue-500" />
               </div>
               <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Thanh toán chuyển khoản</h3>
-              <p className="text-gray-500 dark:text-neutral-400 mb-8">
+              <p className="text-gray-500 dark:text-neutral-400 mb-6">
                 Bạn sẽ được cung cấp mã VietQR để thanh toán bằng bất kỳ ứng dụng ngân hàng nào tại Việt Nam.
               </p>
+
+              <div className="w-full mb-6">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={voucherCode}
+                    onChange={(e) => setVoucherCode(e.target.value)}
+                    placeholder="Mã giảm giá (nếu có)"
+                    className="flex-1 px-4 py-3 bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500 text-sm font-bold uppercase placeholder:normal-case focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={applyVoucher}
+                    disabled={isValidatingVoucher || !voucherCode}
+                    className="px-4 py-3 bg-gray-900 dark:bg-white text-white dark:text-black font-bold text-sm rounded-xl hover:bg-gray-800 disabled:opacity-50 transition"
+                  >
+                    {isValidatingVoucher ? <Loader2 className="w-4 h-4 animate-spin" /> : "Áp dụng"}
+                  </button>
+                </div>
+                {voucherError && <p className="text-xs text-red-500 text-left mt-2">{voucherError}</p>}
+              </div>
               
               <button
                 onClick={handleCheckout}
@@ -227,7 +306,7 @@ export function CheckoutModal({ plan, isOpen, onClose, onSuccess }: CheckoutModa
 
               <button
                 onClick={() => {
-                  toast.success('Đã gửi yêu cầu! Vui lòng đợi Admin kiểm tra và nâng cấp nhé.', {
+                  toast.success('Vui lòng đợi hệ thống xác nhận giao dịch nhé. Quá trình này có thể mất 1-3 phút.', {
                     duration: 5000,
                     icon: '⏳'
                   });

@@ -17,7 +17,8 @@ import {
   toggleBanUser, 
   resetUserAIQuota, 
   resetUserSRSData, 
-  createImpersonationLink 
+  createImpersonationLink,
+  deleteUserPermanently
 } from "./actions";
 import OverviewTab from "./components/OverviewTab";
 import ActivityTab from "./components/ActivityTab";
@@ -148,6 +149,23 @@ export default function UserProfileClient({ user }: { user: AdminUser }) {
               
               <div className="border-t border-neutral-800 my-1" />
               <button onClick={() => handleAction(() => createImpersonationLink(user.id), "Generating link...")} className="w-full text-left px-4 py-2 text-sm text-indigo-400 hover:bg-neutral-800">Impersonate (Login As)</button>
+
+              <div className="border-t border-neutral-800 my-1" />
+              <div className="p-2 text-[10px] font-bold text-red-500/70 uppercase tracking-wider">Danger Zone</div>
+              <button 
+                onClick={() => {
+                  if (confirm("Cảnh báo: Hành động này sẽ xoá vĩnh viễn user khỏi hệ thống và không thể khôi phục! Bạn chắc chắn chứ?")) {
+                    handleAction(async () => {
+                      const res = await deleteUserPermanently(user.id);
+                      if (res.success) return { success: true, url: "/admin/users" };
+                      return res;
+                    }, "Đã xoá user vĩnh viễn");
+                  }
+                }} 
+                className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 font-medium"
+              >
+                Delete User
+              </button>
             </div>
           )}
         </div>

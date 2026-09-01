@@ -3,6 +3,7 @@ import {
   Activity, Users, Zap, DollarSign, Film, BrainCircuit, BookOpen, Clock, HeartPulse 
 } from "lucide-react";
 import Link from "next/link";
+import { TelegramStatusWidget } from "./TelegramStatusWidget";
 
 export default async function AdminOverviewPage() {
   const adminClient = createAdminClient();
@@ -101,7 +102,13 @@ export default async function AdminOverviewPage() {
           </div>
         </div>
 
-        {/* Queue Health */}
+        {/* Telegram Notifications */}
+        <TelegramStatusWidget 
+          isConnected={!!process.env.TELEGRAM_BOT_TOKEN && !!process.env.TELEGRAM_CHAT_ID}
+          chatId={process.env.TELEGRAM_CHAT_ID || null}
+        />
+
+        {/* AI Providers Status */}
         <div className="col-span-1 border border-neutral-800/60 bg-[#0a0a0a] rounded-xl overflow-hidden shadow-xl shadow-black/40">
           <div className="px-5 py-4 border-b border-neutral-800/60 bg-neutral-900/30 flex items-center justify-between">
             <h3 className="text-sm font-medium text-neutral-300 flex items-center gap-2"><Activity className="w-4 h-4 text-amber-500"/> Trạng Thái Hàng Đợi (Queue)</h3>

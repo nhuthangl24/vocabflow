@@ -25,6 +25,17 @@ export async function getUserActivity(userId: string) {
   return data || [];
 }
 
+export async function deleteUserPermanently(userId: string) {
+  await verifyAdmin();
+  const admin = createAdminClient();
+  const { error } = await admin.auth.admin.deleteUser(userId);
+  if (error) return { success: false, error: error.message };
+  
+  await admin.from('users').delete().eq('id', userId);
+  
+  return { success: true };
+}
+
 export async function getUserAILogs(userId: string) {
   await verifyAdmin();
   const admin = createAdminClient();
@@ -123,8 +134,27 @@ export async function getUserStudyHistory(userId: string, module?: string) {
 export async function updateUserPlan(userId: string, newPlan: string) {
   await verifyAdmin();
   const admin = createAdminClient();
+  
+  // Calculate period end based on billing_period
+  let currentPeriodEnd = new Date();
+  const { data: planData } = await admin.from('plans').select('id, billing_period').ilike('slug', newPlan).maybeSingle();
+  if (planData) {
+    if (planData.billing_period === 'yearly') {
+      currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 1);
+    } else {
+      currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
+    }
+    
+    const { data: existingSub } = await admin.from('subscriptions').select('id').eq('user_id', userId).maybeSingle();
+    if (existingSub) {
+      await admin.from('subscriptions').update({ plan_id: planData.id, current_period_end: currentPeriodEnd.toISOString(), status: 'active' }).eq('id', existingSub.id);
+    } else {
+      await admin.from('subscriptions').insert({ user_id: userId, plan_id: planData.id, current_period_end: currentPeriodEnd.toISOString(), status: 'active' });
+    }
+  }
+
   const { error } = await admin.auth.admin.updateUserById(userId, {
-    user_metadata: { plan: newPlan }
+    user_metadata: { plan: newPlan.toLowerCase() }
   });
   if (error) return { success: false, error: error.message };
   return { success: true };

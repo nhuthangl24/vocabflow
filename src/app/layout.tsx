@@ -51,6 +51,8 @@ export const metadata: Metadata = {
   },
 };
 
+import { Toaster } from "react-hot-toast";
+
 export default function RootLayout({ 
   children,
   modal
@@ -76,6 +78,12 @@ export default function RootLayout({
         >
           {children}
           {modal}
+          <Toaster 
+            position="top-center" 
+            toastOptions={{
+              className: 'dark:bg-neutral-900 dark:text-white dark:border dark:border-neutral-800'
+            }} 
+          />
         </ThemeProvider>
       </body>
     </html>
