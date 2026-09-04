@@ -129,7 +129,7 @@ export default function NotificationBell({ placement = 'bottom' }: NotificationB
       </button>
 
       {isOpen && (
-        <div className={`absolute ${placement === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'} right-0 w-80 sm:w-96 bg-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] border border-slate-200 animate-in fade-in ${placement === 'top' ? 'slide-in-from-bottom-2' : 'slide-in-from-top-2'} duration-200 z-[100] dark:bg-[#0a0a0a] dark:border-neutral-700 overflow-hidden flex flex-col max-h-[85vh]`}>
+        <div className={`absolute ${placement === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'} right-0 w-80 sm:w-96 bg-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] border border-slate-200 animate-in fade-in ${placement === 'top' ? 'slide-in-from-bottom-2' : 'slide-in-from-top-2'} duration-200 z-[9999] dark:bg-[#0a0a0a] dark:border-neutral-700 overflow-hidden flex flex-col max-h-[85vh]`}>
           <div className="p-4 border-b border-slate-100 dark:border-neutral-800 flex items-center justify-between shrink-0 bg-slate-50/50 dark:bg-neutral-900/20">
             <h3 className="font-bold text-slate-900 dark:text-white text-[15px]">Thông báo</h3>
             {unreadCount > 0 && (

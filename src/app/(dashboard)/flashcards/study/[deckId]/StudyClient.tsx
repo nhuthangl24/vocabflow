@@ -64,10 +64,7 @@ export default function StudyClient({ initialCards, deckId }: { initialCards: an
   };
 
   const playAudio = (text: string) => {
-    if (!window.speechSynthesis) return;
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "en-US"; 
-    window.speechSynthesis.speak(utterance);
+    import("@/lib/utils/tts").then(({ playTTS }) => playTTS(text));
   };
 
 

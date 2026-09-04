@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Volume2 } from "lucide-react";
+import { Loader2, Volume2, VolumeX } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function FlashcardReviewClient({ initialCards }: { initialCards: any[] }) {
@@ -11,6 +11,20 @@ export default function FlashcardReviewClient({ initialCards }: { initialCards: 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [autoPlayAudio, setAutoPlayAudio] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('flashcardAutoPlay');
+    if (saved) setAutoPlayAudio(saved === 'true');
+  }, []);
+
+  const toggleAutoPlay = () => {
+    setAutoPlayAudio(prev => {
+      const next = !prev;
+      localStorage.setItem('flashcardAutoPlay', next.toString());
+      return next;
+    });
+  };
 
   if (cards.length === 0 || currentIndex >= cards.length) {
     return (
@@ -62,12 +76,38 @@ export default function FlashcardReviewClient({ initialCards }: { initialCards: 
   };
 
   const playAudio = (text: string) => {
-    if (!window.speechSynthesis) return;
-    const utterance = new SpeechSynthesisUtterance(text);
-    // Rough language detection for demo, in production we should pass targetLanguage
-    utterance.lang = "en-US"; 
-    window.speechSynthesis.speak(utterance);
+    import("@/lib/utils/tts").then(({ playTTS }) => playTTS(text));
   };
+
+  useEffect(() => {
+    if (autoPlayAudio && currentCard) {
+      playAudio(currentCard.term);
+    }
+  }, [currentIndex, autoPlayAudio, currentCard]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      
+      if (!isFlipped) {
+        if (e.code === 'Space' || e.code === 'Enter') {
+          e.preventDefault();
+          setIsFlipped(true);
+        }
+      }
+
+      // Allow 1,2,3,4 even if not flipped
+      if (!isSubmitting) {
+        if (e.key === '1') handleRating(1);
+        else if (e.key === '2') handleRating(2);
+        else if (e.key === '3') handleRating(3);
+        else if (e.key === '4') handleRating(4);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFlipped, isSubmitting, currentIndex, cards]);
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -79,6 +119,16 @@ export default function FlashcardReviewClient({ initialCards }: { initialCards: 
           <span className="text-red-500">Đang học: {cards.filter(c => c.state === 1 || c.state === 3).length}</span>
           <span className="text-green-500">Ôn tập: {cards.filter(c => c.state === 2).length}</span>
         </div>
+      </div>
+      
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={toggleAutoPlay}
+          className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 dark:text-neutral-400 dark:hover:text-neutral-200 transition-colors"
+        >
+          {autoPlayAudio ? <Volume2 className="w-4 h-4 text-indigo-500" /> : <VolumeX className="w-4 h-4" />}
+          <span>Tự động đọc</span>
+        </button>
       </div>
 
       {/* Card */}
@@ -135,7 +185,7 @@ export default function FlashcardReviewClient({ initialCards }: { initialCards: 
 
       {/* Action Buttons */}
       <div className={`mt-8 transition-opacity duration-300 ${isFlipped ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <button 
             onClick={() => handleRating(1)}
             disabled={isSubmitting}

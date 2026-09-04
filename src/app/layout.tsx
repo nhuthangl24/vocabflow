@@ -80,6 +80,7 @@ export default function RootLayout({
           {modal}
           <Toaster 
             position="top-center" 
+            containerStyle={{ zIndex: 99999 }}
             toastOptions={{
               className: 'dark:bg-neutral-900 dark:text-white dark:border dark:border-neutral-800'
             }} 

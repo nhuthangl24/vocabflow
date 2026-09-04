@@ -153,49 +153,79 @@ export async function createMediaJob(data: {
 
       if (assetError) throw assetError;
 
-      // Clone transcript_segments
-      const { data: segments } = await adminSupabase
-        .from("transcript_segments")
+      // Get the original job to clone from
+      const { data: oldJob } = await adminSupabase
+        .from("transcript_jobs")
         .select("*")
-        .eq("media_asset_id", existingAsset.id);
-      
-      if (segments && segments.length > 0) {
-        const newSegments = segments.map(s => {
-          const { id, created_at, job_id, ...rest } = s;
-          return { ...rest, media_asset_id: newAsset.id };
-        });
-        // Bulk insert segments in chunks of 500 if there are many
-        for (let i = 0; i < newSegments.length; i += 500) {
-          await supabase.from("transcript_segments").insert(newSegments.slice(i, i + 500));
+        .eq("media_asset_id", existingAsset.id)
+        .eq("status", "completed")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (oldJob) {
+        // Create a new completed job for the new user
+        const { data: newJob, error: newJobError } = await supabase
+          .from("transcript_jobs")
+          .insert({
+            user_id: user.id,
+            media_asset_id: newAsset.id,
+            status: "completed",
+            settings: oldJob.settings || {},
+            completed_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (!newJobError && newJob) {
+          // Clone transcript_segments
+          const { data: segments } = await adminSupabase
+            .from("transcript_segments")
+            .select("*")
+            .eq("job_id", oldJob.id);
+          
+          if (segments && segments.length > 0) {
+            const newSegments = segments.map(s => {
+              const { id, created_at, job_id, media_asset_id, ...rest } = s;
+              return { ...rest, job_id: newJob.id, media_asset_id: newAsset.id };
+            });
+            for (let i = 0; i < newSegments.length; i += 500) {
+              await supabase.from("transcript_segments").insert(newSegments.slice(i, i + 500));
+            }
+          }
+
+          // Clone vocabulary_items
+          const { data: vocab } = await adminSupabase
+            .from("vocabulary_items")
+            .select("*")
+            .eq("job_id", oldJob.id);
+          
+          if (vocab && vocab.length > 0) {
+            const newVocab = vocab.map(v => {
+              const { id, created_at, job_id, user_id, media_asset_id, ...rest } = v;
+              return { ...rest, job_id: newJob.id, user_id: user.id, media_asset_id: newAsset.id };
+            });
+            for (let i = 0; i < newVocab.length; i += 500) {
+              await supabase.from("vocabulary_items").insert(newVocab.slice(i, i + 500));
+            }
+          }
+
+          // Clone grammar_items
+          const { data: grammar } = await adminSupabase
+            .from("grammar_items")
+            .select("*")
+            .eq("job_id", oldJob.id);
+          
+          if (grammar && grammar.length > 0) {
+            const newGrammar = grammar.map(g => {
+              const { id, created_at, job_id, user_id, media_asset_id, ...rest } = g;
+              return { ...rest, job_id: newJob.id, user_id: user.id, media_asset_id: newAsset.id };
+            });
+            for (let i = 0; i < newGrammar.length; i += 500) {
+              await supabase.from("grammar_items").insert(newGrammar.slice(i, i + 500));
+            }
+          }
         }
-      }
-
-      // Clone vocabulary_items
-      const { data: vocab } = await adminSupabase
-        .from("vocabulary_items")
-        .select("*")
-        .eq("media_asset_id", existingAsset.id);
-      
-      if (vocab && vocab.length > 0) {
-        const newVocab = vocab.map(v => {
-          const { id, created_at, ...rest } = v;
-          return { ...rest, media_asset_id: newAsset.id };
-        });
-        await supabase.from("vocabulary_items").insert(newVocab);
-      }
-
-      // Clone grammar_items
-      const { data: grammar } = await adminSupabase
-        .from("grammar_items")
-        .select("*")
-        .eq("media_asset_id", existingAsset.id);
-      
-      if (grammar && grammar.length > 0) {
-        const newGrammar = grammar.map(g => {
-          const { id, created_at, ...rest } = g;
-          return { ...rest, media_asset_id: newAsset.id };
-        });
-        await supabase.from("grammar_items").insert(newGrammar);
       }
 
       return { asset: newAsset, job: null, cached: true };

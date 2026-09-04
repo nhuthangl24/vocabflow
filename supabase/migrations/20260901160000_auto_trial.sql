@@ -46,3 +46,13 @@ BEGIN
     );
   ELSE
     -- Default FREE plan
+    INSERT INTO public.subscriptions (user_id, plan_id)
+    VALUES (
+        NEW.id, 
+        (SELECT id FROM plans WHERE name = 'FREE' LIMIT 1)
+    );
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

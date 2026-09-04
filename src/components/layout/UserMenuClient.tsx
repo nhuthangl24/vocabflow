@@ -49,7 +49,8 @@ export default function UserMenuClient({ user, isCollapsed, planFeatures }: User
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    window.location.href = "/login";
+    router.push("/login");
+    router.refresh();
   };
 
   if (!localUser) {

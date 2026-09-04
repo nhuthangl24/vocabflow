@@ -73,18 +73,7 @@ export default function VocabularyClient({ items }: { items: VocabularyItem[] })
 
   const playAudio = (e: React.MouseEvent, text: string, langName: string) => {
     e.stopPropagation();
-    if (!window.speechSynthesis) return;
-    
-    // Map lang string to browser locales
-    let langCode = 'en-US';
-    if (langName === 'Chinese') langCode = 'zh-CN';
-    else if (langName === 'Japanese') langCode = 'ja-JP';
-    else if (langName === 'Korean') langCode = 'ko-KR';
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = langCode;
-    utterance.rate = 0.9;
-    window.speechSynthesis.speak(utterance);
+    import("@/lib/utils/tts").then(({ playTTS }) => playTTS(text, langName));
   };
 
   const getDictionaryLinks = (term: string, langName: string) => {

@@ -110,15 +110,7 @@ export default function VideoWorkspaceClient({ jobId, videoUrl, vocabulary, gram
 
   const playAudio = (e: React.MouseEvent, text: string, langName: string) => {
     e.stopPropagation();
-    if (!window.speechSynthesis) return;
-    let langCode = 'en-US';
-    if (langName === 'Chinese') langCode = 'zh-CN';
-    else if (langName === 'Japanese') langCode = 'ja-JP';
-    else if (langName === 'Korean') langCode = 'ko-KR';
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = langCode;
-    utterance.rate = 0.9;
-    window.speechSynthesis.speak(utterance);
+    import("@/lib/utils/tts").then(({ playTTS }) => playTTS(text, langName));
   };
 
 

@@ -53,7 +53,6 @@ export default function LoginModal() {
           password,
         });
         if (error) throw error;
-        closeModal();
         router.push("/dashboard");
         router.refresh();
       } else {

@@ -13,6 +13,10 @@ export default function DevToolsDetector() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
+    // Bỏ qua check trên mobile vì outerHeight/innerHeight rất ảo và hay false positive
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
+    if (isMobile) return;
+
     let isDevToolsOpen = false;
 
     // Chặn chuột phải và các phím tắt F12, Ctrl+Shift+I
