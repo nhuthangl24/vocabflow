@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS shadowing_progress (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     media_asset_id UUID NOT NULL REFERENCES media_assets(id) ON DELETE CASCADE,
     segment_id UUID NOT NULL REFERENCES transcript_segments(id) ON DELETE CASCADE,

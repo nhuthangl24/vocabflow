@@ -5,7 +5,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 1. plans
 CREATE TABLE plans (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     description TEXT,
     monthly_transcription_minutes INT NOT NULL,
@@ -32,7 +32,7 @@ VALUES
 
 -- 2. subscriptions
 CREATE TABLE subscriptions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     plan_id UUID NOT NULL REFERENCES plans(id),
     status TEXT NOT NULL DEFAULT 'active', -- active, canceled, past_due
@@ -63,7 +63,7 @@ CREATE TRIGGER on_auth_user_created
 
 -- 3. provider_settings (Admin only config)
 CREATE TABLE provider_settings (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     key TEXT UNIQUE NOT NULL,
     value JSONB NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -72,7 +72,7 @@ CREATE TABLE provider_settings (
 
 -- 4. media_assets
 CREATE TABLE media_assets (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     type TEXT NOT NULL, -- video, audio, subtitle, youtube
@@ -87,7 +87,7 @@ CREATE TABLE media_assets (
 
 -- 5. transcript_jobs
 CREATE TABLE transcript_jobs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     media_asset_id UUID NOT NULL REFERENCES media_assets(id) ON DELETE CASCADE,
     status TEXT DEFAULT 'queued', -- queued, extracting_audio, transcribing, analyzing, completed, failed
@@ -99,7 +99,7 @@ CREATE TABLE transcript_jobs (
 
 -- 6. transcript_segments
 CREATE TABLE transcript_segments (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     job_id UUID NOT NULL REFERENCES transcript_jobs(id) ON DELETE CASCADE,
     start_time_ms INT NOT NULL,
     end_time_ms INT NOT NULL,
@@ -109,7 +109,7 @@ CREATE TABLE transcript_segments (
 
 -- 7. vocabulary_items
 CREATE TABLE vocabulary_items (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     job_id UUID NOT NULL REFERENCES transcript_jobs(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     term TEXT NOT NULL,
@@ -145,7 +145,7 @@ CREATE TABLE vocabulary_items (
 
 -- 8. decks
 CREATE TABLE decks (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     description TEXT,
@@ -156,7 +156,7 @@ CREATE TABLE decks (
 
 -- 9. deck_cards
 CREATE TABLE deck_cards (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     deck_id UUID NOT NULL REFERENCES decks(id) ON DELETE CASCADE,
     vocabulary_item_id UUID NOT NULL REFERENCES vocabulary_items(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -177,7 +177,7 @@ CREATE TABLE deck_cards (
 
 -- 10. study_logs
 CREATE TABLE study_logs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     card_id UUID NOT NULL REFERENCES deck_cards(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     rating TEXT NOT NULL, -- again, hard, good, easy
@@ -187,7 +187,7 @@ CREATE TABLE study_logs (
 
 -- 11. usage_ledger
 CREATE TABLE usage_ledger (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     event_type TEXT NOT NULL, -- transcription_seconds, llm_input_tokens, video_uploaded
     quantity NUMERIC(15,4) NOT NULL,
