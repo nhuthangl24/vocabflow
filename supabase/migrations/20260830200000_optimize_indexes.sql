@@ -1,6 +1,11 @@
 -- Phase P0: Database Index Optimization for Enterprise Scale
 -- These indexes will speed up the extraction pipeline and user workspace loading.
 
+ALTER TABLE public.vocabulary_items ADD COLUMN IF NOT EXISTS media_asset_id UUID REFERENCES public.media_assets(id) ON DELETE CASCADE;
+ALTER TABLE public.grammar_items ADD COLUMN IF NOT EXISTS media_asset_id UUID REFERENCES public.media_assets(id) ON DELETE CASCADE;
+ALTER TABLE public.transcript_segments ADD COLUMN IF NOT EXISTS media_asset_id UUID REFERENCES public.media_assets(id) ON DELETE CASCADE;
+
+
 -- 1. Index for vocabulary_items
 CREATE INDEX IF NOT EXISTS idx_vocabulary_items_job_id ON public.vocabulary_items(job_id);
 CREATE INDEX IF NOT EXISTS idx_vocabulary_items_user_id ON public.vocabulary_items(user_id);
