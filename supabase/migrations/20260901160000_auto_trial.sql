@@ -1,6 +1,8 @@
 -- Update handle_new_user to read from provider_settings
 CREATE OR REPLACE FUNCTION public.handle_new_user() 
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER 
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
 DECLARE
   trial_enabled BOOLEAN := false;
   trial_plan_slug TEXT := 'FREE';
@@ -55,4 +57,4 @@ BEGIN
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;

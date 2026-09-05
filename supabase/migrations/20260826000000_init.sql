@@ -46,7 +46,9 @@ CREATE TABLE subscriptions (
 
 -- Trigger to create a FREE subscription on user signup
 CREATE OR REPLACE FUNCTION public.handle_new_user() 
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
 BEGIN
   INSERT INTO public.subscriptions (user_id, plan_id)
   VALUES (
@@ -55,7 +57,7 @@ BEGIN
   );
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
