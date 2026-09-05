@@ -51,7 +51,7 @@ BEGIN
   INSERT INTO public.subscriptions (user_id, plan_id)
   VALUES (
       NEW.id, 
-      (SELECT id FROM plans WHERE name = 'FREE' LIMIT 1)
+      (SELECT id FROM plans WHERE UPPER(name) = 'FREE' LIMIT 1)
   );
   RETURN NEW;
 END;

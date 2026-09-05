@@ -21,7 +21,7 @@ BEGIN
     INSERT INTO public.subscriptions (user_id, plan_id, current_period_end)
     VALUES (
         NEW.id, 
-        (SELECT id FROM plans WHERE name = trial_plan_slug LIMIT 1),
+        (SELECT id FROM plans WHERE UPPER(name) = trial_plan_slug LIMIT 1),
         NOW() + (trial_days || ' days')::interval
     );
 
@@ -49,7 +49,7 @@ BEGIN
     INSERT INTO public.subscriptions (user_id, plan_id)
     VALUES (
         NEW.id, 
-        (SELECT id FROM plans WHERE name = 'FREE' LIMIT 1)
+        (SELECT id FROM plans WHERE UPPER(name) = 'FREE' LIMIT 1)
     );
   END IF;
 
