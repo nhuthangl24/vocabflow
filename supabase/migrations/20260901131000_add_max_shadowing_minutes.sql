@@ -6,4 +6,3 @@ UPDATE plans SET max_shadowing_minutes = 25 WHERE name = 'FREE';
 UPDATE plans SET max_shadowing_minutes = 50 WHERE name = 'BASIC';
 UPDATE plans SET max_shadowing_minutes = 120 WHERE name = 'PRO';
 UPDATE plans SET max_shadowing_minutes = 9999 WHERE name = 'ADMIN';
-NhuThang123@
